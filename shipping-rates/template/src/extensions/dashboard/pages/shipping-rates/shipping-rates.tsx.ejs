@@ -23,6 +23,8 @@ import { appInstances } from "@wix/app-management";
 import activateModal from "../../modals/activate-shipping-rates-plugin/modal.extension.ts";
 import shippingRatesPageExtension from "./shipping-rates.extension.ts";
 
+import '@wix/design-system/styles.global.css';
+
 function ShippingRatesPage() {
   const { showToast, navigate } = dashboard;
   const { getShippingAppData, setShippingAppData } = useShippingAppData();
