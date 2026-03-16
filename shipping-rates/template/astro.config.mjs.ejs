@@ -1,3 +1,6 @@
+---
+to: astro.config.mjs
+---
 // @ts-check
 import { defineConfig } from 'astro/config';
 import wix from '@wix/astro';
@@ -15,6 +18,11 @@ export default defineConfig({
     checkOrigin: false,
   },
   vite: {
-    server: { cors: true }
-  }
+    server: { cors: true },
+    build: {
+      rollupOptions: {
+        external: ['node:crypto']
+      }
+    }
+  },
 });
