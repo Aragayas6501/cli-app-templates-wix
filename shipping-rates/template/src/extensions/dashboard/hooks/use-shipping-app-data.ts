@@ -3,8 +3,8 @@ import {
   getShippingData,
   setShippingData,
 } from "../../backend/shipping-data.web";
-import type { ShippingAppData } from "../../types";
-import { DEFAULT_APP_DATA } from "../../consts";
+import type { ShippingAppData } from "../../../types";
+import { DEFAULT_APP_DATA } from "../../../consts";
 
 const queryKey = ["shipping-app-data"];
 

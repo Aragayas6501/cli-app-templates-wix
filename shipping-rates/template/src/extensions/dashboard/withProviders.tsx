@@ -1,8 +1,7 @@
-import React from "react";
-import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { WixDesignSystemProvider } from "@wix/design-system";
-import { i18n } from "@wix/essentials";
-import "@wix/design-system/styles.global.css";
+import React from 'react';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { WixDesignSystemProvider } from '@wix/design-system';
+import { i18n } from '@wix/essentials';
 
 const queryClient = new QueryClient();
 

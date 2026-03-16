@@ -9,9 +9,9 @@ import {
 } from "@wix/design-system";
 import { ArrowRight } from "@wix/wix-ui-icons-common";
 import { dashboard } from "@wix/dashboard";
-import { WixPageId } from "../../consts";
+import { WixPageId } from "../../../consts";
 import { useOrders } from "../hooks/use-orders";
-import { formatCurrency, formatDate } from "../../utils/utils";
+import { formatCurrency, formatDate } from "../../../utils/utils";
 
 export function RecentOrdersCard() {
   const { navigate } = dashboard;

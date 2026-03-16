@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Button, Heading } from "@wix/design-system";
 import { appInstances } from "@wix/app-management";
-import { appId } from "../../../wix.config.json";
+import { appId } from "../../../../wix.config.json";
 
 interface UpgradeCardProps {
   appInstance: appInstances.AppInstance;

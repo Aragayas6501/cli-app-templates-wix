@@ -9,7 +9,7 @@ import {
   NumberInput,
   Text,
 } from "@wix/design-system";
-import type { ShippingCosts } from "../../types";
+import type { ShippingCosts } from "../../../types";
 
 interface ShippingCostsFormProps {
   title: string;

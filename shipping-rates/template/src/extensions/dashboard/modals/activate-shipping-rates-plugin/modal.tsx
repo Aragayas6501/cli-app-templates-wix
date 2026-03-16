@@ -1,8 +1,8 @@
 import React, { type FC } from "react";
 import { dashboard } from "@wix/dashboard";
 import { Text, CustomModalLayout, TextButton } from "@wix/design-system";
-import { width, height, title } from "./modal.json";
-import { WixPageId } from "../../../consts";
+import modalExtension from "./modal.extension.ts";
+import { WixPageId } from "../../../../consts";
 import { withProviders } from "../../withProviders";
 import "@wix/design-system/styles.global.css";
 
@@ -11,14 +11,14 @@ const ActivateShippingRatesModal: FC = () => {
 
   return (
     <CustomModalLayout
-      width={width}
-      maxHeight={height}
+      width={modalExtension.options.width}
+      maxHeight={modalExtension.options.height}
       primaryButtonText="Shipping and Delivery Settings"
       secondaryButtonText="Close"
       onCloseButtonClick={() => dashboard.closeModal()}
       primaryButtonOnClick={() => navigate(WixPageId.SHIPPING_INFO)}
       secondaryButtonOnClick={() => dashboard.closeModal()}
-      title={title}
+      title={modalExtension.options.title}
       subtitle="To apply your custom shipping rate logic, activate it as follows"
       content={
         <Text>

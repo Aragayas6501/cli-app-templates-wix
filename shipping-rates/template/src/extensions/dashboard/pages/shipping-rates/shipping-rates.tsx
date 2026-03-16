@@ -9,16 +9,16 @@ import {
   Page,
 } from "@wix/design-system";
 import { dashboard } from "@wix/dashboard";
-import { ShippingCostsForm } from "../components/ShippingDeliveryMethodForm";
-import type { ShippingAppData, ShippingCosts } from "../../types";
-import { RecentOrdersCard } from "../components/RecentOrdersCard";
-import { WixPageId } from "../../consts";
-import { useShippingAppData } from "../hooks/use-shipping-app-data";
-import { withProviders } from "../withProviders";
-import { UpgradeCard } from "../components/UpgradeCard";
+import { ShippingCostsForm } from "../../components/ShippingDeliveryMethodForm";
+import type { ShippingAppData, ShippingCosts } from "../../../../types";
+import { RecentOrdersCard } from "../../components/RecentOrdersCard";
+import { WixPageId } from "../../../../consts";
+import { useShippingAppData } from "../../hooks/use-shipping-app-data";
+import { withProviders } from "../../withProviders";
+import { UpgradeCard } from "../../components/UpgradeCard";
 import { appInstances } from "@wix/app-management";
-import { id as activationModalId } from "../modals/activate-shipping-rates-plugin/modal.json";
-import { id as shippingRatesPageId } from "./page.json";
+import activateModal from "../../modals/activate-shipping-rates-plugin/modal.extension.ts";
+import shippingRatesPageExtension from "./shipping-rates.extension.ts";
 
 function ShippingRatesPage() {
   const { showToast, navigate } = dashboard;
@@ -80,7 +80,7 @@ function ShippingRatesPage() {
           <Box gap="SP2">
             <Button
               priority="secondary"
-              onClick={() => dashboard.openModal(activationModalId)}
+              onClick={() => dashboard.openModal(activateModal.options.id)}
             >
               Activate Plugin
             </Button>
@@ -95,11 +95,11 @@ function ShippingRatesPage() {
         }
         breadcrumbs={
           <Breadcrumbs
-            activeId={shippingRatesPageId}
+            activeId={shippingRatesPageExtension.options.id}
             items={[
               { id: WixPageId.MANAGE_APPS, value: "Apps" },
               {
-                id: shippingRatesPageId,
+                id: shippingRatesPageExtension.options.id,
                 value: "Shipping Rate App",
               },
             ]}

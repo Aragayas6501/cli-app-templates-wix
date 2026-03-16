@@ -13,7 +13,7 @@ import { appInstances } from "@wix/app-management";
 import { webMethod, Permissions } from "@wix/web-methods";
 import { getAppData, updateAppData } from "./database";
 import { isPremiumInstance } from "./appInstance";
-import type { ShippingAppData } from "../types";
+import type { ShippingAppData } from "../../types";
 
 export const getShippingData = webMethod(Permissions.Admin, async () => {
   const appInstance = (await appInstances.getAppInstance()).instance;

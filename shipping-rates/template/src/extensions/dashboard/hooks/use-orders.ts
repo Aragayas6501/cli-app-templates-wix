@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { orders } from "@wix/ecom";
-import type { OrderSummary } from "../../types";
+import type { OrderSummary } from "../../../types";
 
 interface useOrdersProps {
   limit: number;
