@@ -6,6 +6,9 @@ import { extensions } from '@wix/astro/builders';
 export default extensions.sitePlugin({
   id: '<%= generatePageID() %>',
   name: 'Stock Countdown',
+  element: './extensions/site/plugins/stock-counter/stock-counter.tsx',
+  settings: './extensions/site/plugins/stock-counter/stock-counter.panel.tsx',
+  tagName: 'stock-counter',
   referenceComponentId: '<%= generatePageID() %>',
   marketData: {
     name: 'Stock Countdown',
