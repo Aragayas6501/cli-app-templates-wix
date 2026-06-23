@@ -18,12 +18,15 @@ const runCommand = async (command: string, args: string[], options?: Options) =>
   }
 };
 
+const runYarn = async (args: string[], options?: Options) =>
+  runCommand('corepack', ['yarn', ...args], options);
+
 export const createApp = async (template: string) => {
   try {
     const cwd = temporaryDirectory();
     const dirname = path.dirname(fileURLToPath(import.meta.url));
     const templatePath = path.join(dirname, `../${template}/template`);
-    await runCommand('yarn',
+    await runYarn(
       [
         'create',
         '@wix/app',
@@ -42,10 +45,10 @@ export const createApp = async (template: string) => {
 }
 
 export const installDependencies = async (cwd: string) =>
-  await runCommand('yarn', ['install', '--silent'], { cwd, env: { YARN_ENABLE_IMMUTABLE_INSTALLS: 'false' } })
+  await runYarn(['install', '--silent'], { cwd, env: { YARN_ENABLE_IMMUTABLE_INSTALLS: 'false' } })
 
 export const checkTypes = async (cwd: string) =>
-  await runCommand('yarn', ['typecheck'], { cwd })
+  await runYarn(['typecheck'], { cwd })
 
 export const buildApp = async (cwd: string) =>
-  await runCommand('yarn', ['build'], { cwd })
+  await runYarn(['build'], { cwd })

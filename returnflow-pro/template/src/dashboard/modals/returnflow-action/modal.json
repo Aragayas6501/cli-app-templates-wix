@@ -1,0 +1,7 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/dashboard-modal.json",
+  "id": "<%= generatePageID() %>",
+  "title": "Return Action",
+  "width": 720,
+  "height": 640
+}
