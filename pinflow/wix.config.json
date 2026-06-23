@@ -1,0 +1,6 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/wix-config.json",
+  "appId": "REPLACE_WITH_DEV_CENTER_APP_ID",
+  "projectId": "pinflow",
+  "siteId": "76879089-f8e3-4180-913e-d8dad4378a03"
+}
