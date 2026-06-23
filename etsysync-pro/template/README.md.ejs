@@ -1,0 +1,40 @@
+---
+to: README.md
+---
+# <%= packageName %>
+
+This project was bootstrapped with [Create Wix App](https://www.npmjs.com/package/@wix/create-app).  
+Read more about it in the [Wix CLI for Apps
+ documentation](https://dev.wix.com/docs/build-apps/developer-tools/cli/get-started/about-the-wix-cli-for-apps).
+
+## Setup 🔧
+
+##### Install dependencies:
+
+```console
+<%= packageManager.installCmd %>
+```
+
+## Available Scripts
+
+In the project directory, you can run:
+
+```console
+<%= packageManager.runCmd %> dev
+```
+
+## App Market setup required
+
+This template includes App Market readiness checks in the dashboard, but Wix Dev Center configuration is still required before submission:
+
+1. Set the real app namespace in the collection placeholder and create app data collections with IDs like `<app-namespace>/sync-profiles`, `<app-namespace>/product-mappings`, and `<app-namespace>/audit-logs`.
+2. Configure only the minimum Stores permissions listed in the Settings & billing tab.
+3. Keep both Wix Stores Catalog V1 and V3 code paths. Always call `catalogVersioning.getCatalogVersion()` before product, inventory, collection, or category operations.
+4. Configure paid tiers through Wix Billing. Do not link to external checkout for app plan upgrades.
+5. Complete Etsy OAuth on the backend and store secrets/tokens in Wix Secrets Manager or encrypted backend storage.
+6. Handle app-instance identity and `originInstanceId` for copied sites during production lifecycle provisioning.
+7. Run install, typecheck, build, Wix preview, browser checks, listing metadata, privacy policy, support contact, and console-error validation before App Market review.
+
+## Design system
+
+The dashboard uses a custom **Sapphire Precision** design system (`src/dashboard/styles/sapphire.css`) by design, not `@wix/design-system` components. It is still wrapped in the standard Wix provider stack in `src/dashboard/withProviders.tsx` (`WixDesignSystemProvider` with `newColorsBranding` + `i18n.getLocale()`, and `@wix/design-system/styles.global.css` imported before the Sapphire styles), so the app inherits Wix theming and locale while keeping its custom look.
