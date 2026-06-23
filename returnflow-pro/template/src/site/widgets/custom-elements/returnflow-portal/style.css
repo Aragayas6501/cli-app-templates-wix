@@ -1,0 +1,127 @@
+.rfp-shell {
+  --rfp-accent: #0052ff;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(0, 82, 255, 0.10) 1px, transparent 0),
+    #ffffff;
+  background-size: 24px 24px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 16px;
+  box-sizing: border-box;
+  color: #0f172a;
+  font-family: Arial, sans-serif;
+  line-height: 1.5;
+  padding: 24px;
+  width: 100%;
+}
+
+.rfp-shell h2,
+.rfp-shell h3 {
+  margin: 0 0 12px;
+}
+
+.rfp-shell p {
+  margin: 0 0 16px;
+}
+
+.rfp-rail {
+  background: color-mix(in srgb, var(--rfp-accent) 10%, #ffffff);
+  border-left: 4px solid var(--rfp-accent);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+}
+
+.rfp-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 16px;
+}
+
+.rfp-shell label {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 6px;
+}
+
+.rfp-shell input,
+.rfp-shell select,
+.rfp-shell textarea {
+  border: 1px solid rgba(15, 23, 42, 0.22);
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #0f172a;
+  font: inherit;
+  padding: 10px 12px;
+}
+
+.rfp-shell textarea {
+  min-height: 96px;
+}
+
+.rfp-shell button {
+  background: var(--rfp-accent);
+  border: 1px solid color-mix(in srgb, var(--rfp-accent) 76%, #0f172a);
+  border-radius: 8px;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 12px 16px;
+}
+
+.rfp-shell button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.rfp-panel {
+  background: color-mix(in srgb, #ebf1ff 72%, #ffffff);
+  border: 1px solid rgba(0, 82, 255, 0.16);
+  border-radius: 16px;
+  margin-top: 18px;
+  padding: 16px;
+}
+
+.rfp-item {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto 1fr;
+  margin-bottom: 10px;
+  padding: 12px;
+}
+
+.rfp-item small {
+  color: rgba(15, 23, 42, 0.70);
+  display: block;
+  font-weight: 400;
+}
+
+.rfp-error {
+  background: color-mix(in srgb, #bf3003 10%, #ffffff);
+  border: 1px solid rgba(191, 48, 3, 0.28);
+  border-radius: 8px;
+  color: #0f172a;
+  margin-top: 16px;
+  padding: 12px;
+}
+
+.rfp-timeline {
+  padding-left: 20px;
+}
+
+.rfp-timeline li {
+  margin-bottom: 10px;
+}
+
+.rfp-timeline span {
+  display: block;
+}

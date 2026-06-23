@@ -1,0 +1,22 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/custom-element.json",
+  "id": "<%= generatePageID() %>",
+  "name": "ReturnFlow Portal",
+  "width": {
+    "defaultWidth": 720,
+    "allowStretch": true
+  },
+  "height": {
+    "defaultHeight": 760
+  },
+  "installation": {
+    "autoAddToSite": false,
+    "essential": false
+  },
+  "presets": [
+    {
+      "id": "<%= generatePageID() %>",
+      "thumbnailUrl": "../../../../../assets/returnflow-portal/thumbnail.svg"
+    }
+  ]
+}

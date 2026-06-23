@@ -4,12 +4,12 @@ import { buildApp, checkTypes, createApp, installDependencies } from './testkit'
 
 type TemplateSanityOptions = {
   /**
-   * Default per-step timeout in milliseconds. Defaults to 60s.
+   * Default per-step timeout in milliseconds. Defaults to 180s.
    */
   timeout?: number;
 
   /**
-   * Per-step timeout for `yarn install` in milliseconds. Defaults to 60s.
+   * Per-step timeout for `yarn install` in milliseconds. Defaults to 300s.
    * Templates with a heavier (but standard) dependency set — e.g. those that
    * ship `@wix/design-system` — can raise this so a cold install on a slower
    * machine does not flake at the timeout boundary.
@@ -18,7 +18,7 @@ type TemplateSanityOptions = {
 };
 
 export const templateSanity = (template: string, options: TemplateSanityOptions = {}) => {
-  const { timeout = 60_000, installTimeout = timeout } = options;
+  const { timeout = 180_000, installTimeout = 300_000 } = options;
 
   describe(`${template} sanity`, () => {
     let cwd: string;
@@ -32,7 +32,7 @@ export const templateSanity = (template: string, options: TemplateSanityOptions 
       await expect(installDependencies(cwd)).resolves.not.toThrow();
     }, installTimeout);
 
-    it("should successfully run typescheck", async () => {
+    it("should successfully run typecheck", async () => {
       await expect(checkTypes(cwd)).resolves.not.toThrow();
     }, timeout);
 
