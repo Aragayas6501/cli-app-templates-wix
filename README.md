@@ -24,6 +24,7 @@ The repo contains the following app templates to get you started:
 
 + [Custom Products Catalog](./custom-products-catalog/README.md)
 + [Mixpanel Analytics](./mixpanel-analytics/README.md)
++ [EtsySync Pro](./etsysync-pro/README.md)
 + [Chart Widget](./chart-widget/README.md)
 + [Site Popup](./site-popup/README.md)
 + [Stock Countdown](./stock-countdown/README.md)
