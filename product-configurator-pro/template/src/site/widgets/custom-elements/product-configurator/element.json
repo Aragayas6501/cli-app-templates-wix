@@ -1,0 +1,22 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/custom-element.json",
+  "id": "<%= generatePageID() %>",
+  "name": "Product Configurator Pro",
+  "width": {
+    "defaultWidth": 560,
+    "allowStretch": true
+  },
+  "height": {
+    "defaultHeight": 640
+  },
+  "installation": {
+    "autoAddToSite": false,
+    "essential": false
+  },
+  "presets": [
+    {
+      "id": "<%= generatePageID() %>",
+      "thumbnailUrl": "../../../../../assets/product-configurator-pro/thumbnail.svg"
+    }
+  ]
+}
