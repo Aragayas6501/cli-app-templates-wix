@@ -1,12 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  connectEtsyShop as connectEtsyShopWeb,
   getDashboardData,
   resolveConflict as resolveConflictWeb,
   runManualSync as runManualSyncWeb,
   saveSyncProfile,
 } from "../../backend/etsysync-data.web";
-import type { Conflict, EtsySyncDashboardData, SyncProfile } from "../../types";
+import type { Conflict, EtsySyncDashboardData, ManualSyncScope, SyncProfile } from "../../types";
 
 const queryKey = ["etsysync-dashboard-data"];
 
@@ -16,6 +15,8 @@ export function useEtsySyncData() {
   const dashboardData = useQuery<EtsySyncDashboardData>({
     queryKey,
     queryFn: async () => getDashboardData(),
+    refetchOnWindowFocus: false,
+    retry: 2,
   });
 
   const invalidateDashboardData = () =>
@@ -26,13 +27,8 @@ export function useEtsySyncData() {
     onSuccess: invalidateDashboardData,
   });
 
-  const connectEtsyShop = useMutation({
-    mutationFn: async (shopName: string) => connectEtsyShopWeb(shopName),
-    onSuccess: invalidateDashboardData,
-  });
-
   const runManualSync = useMutation({
-    mutationFn: async (scope: string) => runManualSyncWeb(scope),
+    mutationFn: async (scope: ManualSyncScope) => runManualSyncWeb(scope),
     onSuccess: invalidateDashboardData,
   });
 
@@ -50,7 +46,6 @@ export function useEtsySyncData() {
   return {
     dashboardData,
     updateSyncProfile,
-    connectEtsyShop,
     runManualSync,
     resolveConflict,
   };

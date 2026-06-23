@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { dashboard } from "@wix/dashboard";
 import { withProviders } from "../withProviders";
 import { useEtsySyncData } from "../hooks/use-etsysync-data";
@@ -8,6 +8,7 @@ import type {
   AppMarketReadinessItem,
   Conflict,
   EtsySyncDashboardData,
+  ManualSyncScope,
   OrderMapping,
   ProductMapping,
   SyncProfile,
@@ -38,12 +39,13 @@ function statusTone(status: SyncStatus | string): "primary" | "tertiary" | "neut
     status === "syncing" ||
     status === "Complete" ||
     status === "Current" ||
-    status === "Confirmed"
+    status === "Confirmed" ||
+    status === "Info"
   ) {
     return "primary";
   }
 
-  if (status === "warning" || status === "failed" || status === "Action required") {
+  if (status === "warning" || status === "failed" || status === "Failed" || status === "Action required") {
     return "tertiary";
   }
 
@@ -51,6 +53,10 @@ function statusTone(status: SyncStatus | string): "primary" | "tertiary" | "neut
 }
 
 function formatCurrency(value: number) {
+  if (!Number.isFinite(value)) {
+    return "$0.00";
+  }
+
   return new Intl.NumberFormat("en", {
     style: "currency",
     currency: "USD",
@@ -59,12 +65,58 @@ function formatCurrency(value: number) {
 }
 
 function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown date";
+  }
+
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(date);
+}
+
+function csvCell(value: string | number) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(filename: string, rows: Array<Array<string | number>>) {
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function isProfileDirty(initialProfile: SyncProfile, currentProfile: SyncProfile) {
+  return (
+    initialProfile.mode !== currentProfile.mode ||
+    initialProfile.inventoryBuffer !== currentProfile.inventoryBuffer ||
+    initialProfile.pricingFormula !== currentProfile.pricingFormula
+  );
+}
+
+function validateProfile(profile: SyncProfile): string | null {
+  if (!Number.isInteger(profile.inventoryBuffer) || profile.inventoryBuffer < 0 || profile.inventoryBuffer > 9999) {
+    return "Inventory buffer must be a whole number between 0 and 9,999.";
+  }
+
+  if (!profile.pricingFormula.trim()) {
+    return "Pricing formula is required.";
+  }
+
+  if (profile.pricingFormula.length > 120) {
+    return "Pricing formula must be 120 characters or less.";
+  }
+
+  return null;
 }
 
 function StatusBadge({ label }: { label: SyncStatus | string }) {
@@ -138,10 +190,12 @@ function Overview({
   data,
   onRunSync,
   isSyncing,
+  onViewLogs,
 }: {
   data: EtsySyncDashboardData;
   onRunSync: () => void;
   isSyncing: boolean;
+  onViewLogs: () => void;
 }) {
   return (
     <div className="sc-grid">
@@ -180,7 +234,7 @@ function Overview({
           title="Active sync profiles"
           caption="Direction, pricing formulas, order import, customers, and image handling"
           action={
-            <button className="sc-btn sc-btn-primary" onClick={onRunSync} type="button">
+            <button className="sc-btn sc-btn-primary" disabled={isSyncing} onClick={onRunSync} type="button">
               {isSyncing ? "Queueing..." : "Run manual sync"}
             </button>
           }
@@ -212,13 +266,21 @@ function Overview({
           </table>
         </Card>
 
-        <Inspector data={data} />
+        <Inspector data={data} onViewLogs={onViewLogs} />
       </div>
     </div>
   );
 }
 
-function ProductWorkspace({ data }: { data: EtsySyncDashboardData }) {
+function ProductWorkspace({
+  data,
+  onRunBulkSync,
+  isSyncing,
+}: {
+  data: EtsySyncDashboardData;
+  onRunBulkSync: () => void;
+  isSyncing: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
 
@@ -260,15 +322,11 @@ function ProductWorkspace({ data }: { data: EtsySyncDashboardData }) {
           </select>
           <button
             className="sc-btn sc-btn-secondary"
+            disabled={isSyncing || products.length === 0}
             type="button"
-            onClick={() =>
-              dashboard.showToast({
-                message: "Bulk operations run against the synced catalog once Wix Stores and Etsy are connected.",
-                type: "standard",
-              })
-            }
+            onClick={onRunBulkSync}
           >
-            Bulk operations
+            {isSyncing ? "Queueing..." : `Bulk sync ${products.length} item(s)`}
           </button>
         </div>
 
@@ -469,6 +527,7 @@ function AutomationWorkspace({
                   <p>{conflict.impact}</p>
                   <button
                     className="sc-btn sc-btn-secondary"
+                    disabled={resolvingConflict}
                     type="button"
                     onClick={() => onResolveConflict(conflict)}
                   >
@@ -480,12 +539,30 @@ function AutomationWorkspace({
           </ul>
         )}
       </Card>
+
+      <Card title="Sync log stream" caption="Queued jobs, warnings, failures, and replay diagnostics">
+        <ul className="sc-list">
+          {data.syncLogs.map((log) => (
+            <li className="sc-list-item" key={log.id}>
+              <span className="sc-status-dot" data-tone={statusTone(log.level)} />
+              <div>
+                <strong>{log.event}</strong>
+                <p>{log.object}</p>
+                <p>
+                  {formatDate(log.createdAt)}
+                  {log.diagnosticId ? ` / ${log.diagnosticId}` : ""}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }
 
 function AnalyticsWorkspace({ data }: { data: EtsySyncDashboardData }) {
-  const maxRevenue = Math.max(...data.analyticsEvents.map((event) => event.revenue));
+  const maxRevenue = Math.max(1, ...data.analyticsEvents.map((event) => event.revenue));
 
   return (
     <div className="sc-grid">
@@ -537,14 +614,22 @@ function AnalyticsWorkspace({ data }: { data: EtsySyncDashboardData }) {
 
 function SettingsWorkspace({
   data,
-  onConnectShop,
-  connectingShop,
+  onSaveProfile,
+  savingProfile,
 }: {
   data: EtsySyncDashboardData;
-  onConnectShop: () => void;
-  connectingShop: boolean;
+  onSaveProfile: (profile: SyncProfile) => void;
+  savingProfile: boolean;
 }) {
-  const [profile, setProfile] = useState<SyncProfile>(data.syncProfiles[0]);
+  const firstProfile = data.syncProfiles[0] ?? null;
+  const [profile, setProfile] = useState<SyncProfile | null>(firstProfile);
+
+  useEffect(() => {
+    setProfile(firstProfile);
+  }, [firstProfile]);
+
+  const validationError = profile ? validateProfile(profile) : "No sync profile is available to edit.";
+  const hasChanges = Boolean(firstProfile && profile && isProfileDirty(firstProfile, profile));
 
   return (
     <div className="sc-grid">
@@ -553,55 +638,80 @@ function SettingsWorkspace({
           title="Sync settings"
           caption="Performance, reliability, security, OAuth, encrypted tokens, and audit readiness"
           action={
-            <button className="sc-btn sc-btn-primary" type="button" onClick={onConnectShop}>
-              {connectingShop ? "Connecting..." : "Connect Etsy shop"}
+            <button
+              className="sc-btn sc-btn-primary"
+              disabled={!profile || Boolean(validationError) || !hasChanges || savingProfile}
+              type="button"
+              onClick={() => {
+                if (profile && !validationError) {
+                  onSaveProfile(profile);
+                }
+              }}
+            >
+              {savingProfile ? "Saving..." : "Save settings"}
             </button>
           }
         >
-          <div className="sc-form-grid">
-            <div className="sc-field">
-              <label htmlFor="sync-mode">Sync mode</label>
-              <select
-                id="sync-mode"
-                className="sc-select"
-                value={profile.mode}
-                onChange={(event) => setProfile({ ...profile, mode: event.target.value as SyncProfile["mode"] })}
-              >
-                <option value="wix-to-etsy">Wix {"->"} Etsy</option>
-                <option value="etsy-to-wix">Etsy {"->"} Wix</option>
-                <option value="two-way">Two-way sync</option>
-              </select>
+          {profile ? (
+            <>
+              <div className="sc-form-grid">
+                <div className="sc-field">
+                  <label htmlFor="sync-mode">Sync mode</label>
+                  <select
+                    id="sync-mode"
+                    className="sc-select"
+                    value={profile.mode}
+                    onChange={(event) => setProfile({ ...profile, mode: event.target.value as SyncProfile["mode"] })}
+                  >
+                    <option value="wix-to-etsy">Wix {"->"} Etsy</option>
+                    <option value="etsy-to-wix">Etsy {"->"} Wix</option>
+                    <option value="two-way">Two-way sync</option>
+                  </select>
+                </div>
+                <div className="sc-field">
+                  <label htmlFor="inventory-buffer">Inventory buffer</label>
+                  <input
+                    id="inventory-buffer"
+                    className="sc-input"
+                    min={0}
+                    max={9999}
+                    step={1}
+                    type="number"
+                    value={profile.inventoryBuffer}
+                    onChange={(event) =>
+                      setProfile({ ...profile, inventoryBuffer: Number(event.target.value) })
+                    }
+                  />
+                </div>
+                <div className="sc-field">
+                  <label htmlFor="pricing-formula">Pricing formula</label>
+                  <input
+                    id="pricing-formula"
+                    className="sc-input"
+                    maxLength={120}
+                    value={profile.pricingFormula}
+                    onChange={(event) => setProfile({ ...profile, pricingFormula: event.target.value })}
+                  />
+                </div>
+                <div className="sc-field">
+                  <label htmlFor="low-stock">Low stock alert threshold</label>
+                  <input
+                    id="low-stock"
+                    className="sc-input"
+                    type="number"
+                    value={data.settings.lowStockAlertThreshold}
+                    readOnly
+                  />
+                </div>
+              </div>
+              {validationError && <p className="sc-form-error">{validationError}</p>}
+            </>
+          ) : (
+            <div className="sc-empty">
+              <h2 className="sc-card-title">No sync profile available</h2>
+              <p>Create a sync profile before editing catalog, inventory, and pricing settings.</p>
             </div>
-            <div className="sc-field">
-              <label htmlFor="inventory-buffer">Inventory buffer</label>
-              <input
-                id="inventory-buffer"
-                className="sc-input"
-                type="number"
-                value={profile.inventoryBuffer}
-                onChange={(event) => setProfile({ ...profile, inventoryBuffer: Number(event.target.value) })}
-              />
-            </div>
-            <div className="sc-field">
-              <label htmlFor="pricing-formula">Pricing formula</label>
-              <input
-                id="pricing-formula"
-                className="sc-input"
-                value={profile.pricingFormula}
-                onChange={(event) => setProfile({ ...profile, pricingFormula: event.target.value })}
-              />
-            </div>
-            <div className="sc-field">
-              <label htmlFor="low-stock">Low stock alert threshold</label>
-              <input
-                id="low-stock"
-                className="sc-input"
-                type="number"
-                value={data.settings.lowStockAlertThreshold}
-                readOnly
-              />
-            </div>
-          </div>
+          )}
         </Card>
 
         <Card title="Database architecture" caption="PRD-aligned Wix Data collection blueprint">
@@ -704,8 +814,28 @@ function SettingsWorkspace({
   );
 }
 
-function Inspector({ data }: { data: EtsySyncDashboardData }) {
+function Inspector({
+  data,
+  onViewLogs,
+}: {
+  data: EtsySyncDashboardData;
+  onViewLogs: () => void;
+}) {
   const highestPriorityLog = data.syncLogs.find((log) => log.level === "Warning") ?? data.syncLogs[0];
+
+  if (!highestPriorityLog) {
+    return (
+      <aside className="sapphire-card sc-inspector" aria-label="Operational inspector">
+        <header className="sc-card-header">
+          <div>
+            <h2 className="sc-card-title">Inspector</h2>
+            <p className="sc-card-caption">No sync events have been recorded yet.</p>
+          </div>
+          <StatusBadge label="healthy" />
+        </header>
+      </aside>
+    );
+  }
 
   return (
     <aside className="sapphire-card sc-inspector" aria-label="Operational inspector">
@@ -744,12 +874,7 @@ function Inspector({ data }: { data: EtsySyncDashboardData }) {
         <button
           className="sc-btn sc-btn-secondary"
           type="button"
-          onClick={() =>
-            dashboard.showToast({
-              message: "Sync logs stream from the backend once a sync profile has run its first job.",
-              type: "standard",
-            })
-          }
+          onClick={onViewLogs}
         >
           View sync logs
         </button>
@@ -785,10 +910,18 @@ function EtsySyncProPage() {
   const rafId = useRef<number | null>(null);
   const {
     dashboardData,
-    connectEtsyShop,
     resolveConflict,
     runManualSync,
+    updateSyncProfile,
   } = useEtsySyncData();
+
+  useEffect(() => {
+    return () => {
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
+      }
+    };
+  }, []);
 
   const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
@@ -806,9 +939,9 @@ function EtsySyncProPage() {
     });
   };
 
-  const handleRunSync = async () => {
+  const handleRunSync = async (scope: ManualSyncScope = "full-catalog") => {
     try {
-      await runManualSync.mutateAsync("full-catalog");
+      await runManualSync.mutateAsync(scope);
       dashboard.showToast({
         message: "Manual sync was queued. Existing data remains unchanged until completion.",
         type: "success",
@@ -821,19 +954,49 @@ function EtsySyncProPage() {
     }
   };
 
-  const handleConnectShop = async () => {
+  const handleSaveProfile = async (profile: SyncProfile) => {
     try {
-      await connectEtsyShop.mutateAsync("New Etsy Shop");
+      await updateSyncProfile.mutateAsync(profile);
       dashboard.showToast({
-        message: "Etsy OAuth scaffold completed. Add credentials before production launch.",
+        message: "Sync settings were saved.",
         type: "success",
       });
     } catch (error) {
       dashboard.showToast({
-        message: error instanceof Error ? error.message : "Etsy shop connection was not completed.",
+        message: error instanceof Error ? error.message : "Sync settings could not be saved.",
         type: "error",
       });
     }
+  };
+
+  const handleExportReport = () => {
+    if (!data) {
+      dashboard.showToast({ message: "Dashboard data is still loading.", type: "error" });
+      return;
+    }
+
+    try {
+      downloadCsv("etsysync-pro-performance-report.csv", [
+        ["Channel", "Revenue", "Orders", "Top product", "Conversion"],
+        ...data.analyticsEvents.map((event) => [
+          event.channel,
+          event.revenue,
+          event.orders,
+          event.topProduct,
+          event.conversionTrend,
+        ]),
+      ]);
+      dashboard.showToast({ message: "Performance report exported.", type: "success" });
+    } catch (error) {
+      dashboard.showToast({
+        message: error instanceof Error ? error.message : "Performance report could not be exported.",
+        type: "error",
+      });
+    }
+  };
+
+  const handleViewLogs = () => {
+    setActiveTab("automation");
   };
 
   const handleResolveConflict = async (conflict: Conflict) => {
@@ -874,16 +1037,16 @@ function EtsySyncProPage() {
               <button
                 className="sc-btn sc-btn-secondary"
                 type="button"
-                onClick={() =>
-                  dashboard.showToast({
-                    message: "Performance reports export to CSV once analytics data has been collected.",
-                    type: "standard",
-                  })
-                }
+                onClick={handleExportReport}
               >
                 Export report
               </button>
-              <button className="sc-btn sc-btn-primary" type="button" onClick={handleRunSync}>
+              <button
+                className="sc-btn sc-btn-primary"
+                disabled={runManualSync.isLoading}
+                type="button"
+                onClick={() => handleRunSync("priority-conflicts")}
+              >
                 {runManualSync.isLoading ? "Queueing..." : "Start priority sync"}
               </button>
             </div>
@@ -902,7 +1065,7 @@ function EtsySyncProPage() {
             <button
               className="sc-row-button"
               type="button"
-              onClick={() => setActiveTab("automation")}
+              onClick={() => setActiveTab(conflictCount > 0 ? "automation" : "settings")}
             >
               Review
             </button>
@@ -936,11 +1099,18 @@ function EtsySyncProPage() {
           {data && activeTab === "overview" && (
             <Overview
               data={data}
-              onRunSync={handleRunSync}
+              onRunSync={() => handleRunSync("full-catalog")}
+              isSyncing={runManualSync.isLoading}
+              onViewLogs={handleViewLogs}
+            />
+          )}
+          {data && activeTab === "products" && (
+            <ProductWorkspace
+              data={data}
+              onRunBulkSync={() => handleRunSync("filtered-catalog")}
               isSyncing={runManualSync.isLoading}
             />
           )}
-          {data && activeTab === "products" && <ProductWorkspace data={data} />}
           {data && activeTab === "orders" && <OrdersWorkspace data={data} />}
           {data && activeTab === "automation" && (
             <AutomationWorkspace
@@ -953,8 +1123,10 @@ function EtsySyncProPage() {
           {data && activeTab === "settings" && (
             <SettingsWorkspace
               data={data}
-              onConnectShop={handleConnectShop}
-              connectingShop={connectEtsyShop.isLoading}
+              onSaveProfile={(profile) => {
+                void handleSaveProfile(profile);
+              }}
+              savingProfile={updateSyncProfile.isLoading}
             />
           )}
         </main>

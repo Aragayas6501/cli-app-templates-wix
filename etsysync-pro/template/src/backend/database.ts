@@ -1,3 +1,5 @@
+import { items } from "@wix/data";
+import { auth } from "@wix/essentials";
 import type {
   AutomationRule,
   AppMarketReadinessItem,
@@ -6,29 +8,37 @@ import type {
   DataCollectionBlueprint,
   EtsyAccount,
   EtsySyncDashboardData,
+  ManualSyncJob,
+  ManualSyncScope,
   RequiredPermission,
+  SyncMode,
   SyncProfile,
+  SyncLog,
+  SyncStatus,
   WixSiteReadiness,
 } from "../types";
 
 export const COLLECTIONS: CollectionName[] = [
-  "EtsyAccounts",
-  "SyncProfiles",
-  "ProductMappings",
-  "VariantMappings",
-  "InventoryEvents",
-  "OrderMappings",
-  "CustomerMappings",
-  "SyncLogs",
-  "AutomationRules",
-  "AnalyticsEvents",
-  "Settings",
-  "AuditLogs",
+  "etsy-accounts",
+  "sync-profiles",
+  "product-mappings",
+  "variant-mappings",
+  "inventory-events",
+  "order-mappings",
+  "customer-mappings",
+  "sync-logs",
+  "automation-rules",
+  "analytics-events",
+  "settings",
+  "audit-logs",
 ];
 
-const now = new Date().toISOString();
+const APP_NAMESPACE = "<app-namespace>";
+const SETTINGS_COLLECTION_ID = `${APP_NAMESPACE}/settings`;
+const TENANT_STATE_ITEM_ID = "etsysync-dashboard-state";
 
 const DEFAULT_SITE_READINESS: WixSiteReadiness = {
+  instanceId: "local-preview-instance",
   catalogVersion: "UNKNOWN",
   storesStatus: "Needs confirmation",
   instanceStatus: "Needs confirmation",
@@ -37,6 +47,13 @@ const DEFAULT_SITE_READINESS: WixSiteReadiness = {
   storesEvidence: "Run inside a Wix site to confirm Wix Stores catalog version.",
   originInstanceEvidence: "Use originInstanceId during production provisioning for copied sites.",
 };
+
+interface TenantDashboardState {
+  etsyAccounts: EtsyAccount[];
+  syncProfiles: SyncProfile[];
+  conflicts: Conflict[];
+  manualSyncJobs: ManualSyncJob[];
+}
 
 const REQUIRED_PERMISSIONS: RequiredPermission[] = [
   {
@@ -89,21 +106,31 @@ const REQUIRED_PERMISSIONS: RequiredPermission[] = [
     scope: "SCOPE.CATEGORIES.CATEGORY_WRITE",
     reason: "Creates or updates V3 category mappings when exporting catalog structure.",
   },
+  {
+    id: "data-read",
+    scope: "SCOPE.DC-DATA.READ",
+    reason: "Reads app-scoped Wix Data collections for tenant-isolated sync settings and operations state.",
+  },
+  {
+    id: "data-write",
+    scope: "SCOPE.DC-DATA.WRITE",
+    reason: "Persists admin sync settings, conflict resolution state, manual sync jobs, and audit-ready operational state.",
+  },
 ];
 
 const COLLECTION_PURPOSES: Record<CollectionName, string> = {
-  EtsyAccounts: "Stores connected Etsy shop metadata and non-secret account state.",
-  SyncProfiles: "Stores sync direction, scope, pricing formula, image, customer, and order rules.",
-  ProductMappings: "Maps Wix products to Etsy listings and tracks product-level sync state.",
-  VariantMappings: "Maps Wix variants to Etsy variations and their inventory state.",
-  InventoryEvents: "Records stock changes, source channel, buffer application, and audit context.",
-  OrderMappings: "Maps Etsy and Wix order IDs, fulfillment status, and tracking state.",
-  CustomerMappings: "Maps customers across channels while respecting Etsy email limitations.",
-  SyncLogs: "Stores sync diagnostics, warnings, failures, and replay context.",
-  AutomationRules: "Stores merchant automation triggers, actions, and paused/active state.",
-  AnalyticsEvents: "Stores rollup events for channel revenue, order, and conversion dashboards.",
-  Settings: "Stores merchant settings that are not secrets.",
-  AuditLogs: "Stores admin, automation, and lifecycle actions for reviewability.",
+  "etsy-accounts": "Stores connected Etsy shop metadata and non-secret account state.",
+  "sync-profiles": "Stores sync direction, scope, pricing formula, image, customer, and order rules.",
+  "product-mappings": "Maps Wix products to Etsy listings and tracks product-level sync state.",
+  "variant-mappings": "Maps Wix variants to Etsy variations and their inventory state.",
+  "inventory-events": "Records stock changes, source channel, buffer application, and audit context.",
+  "order-mappings": "Maps Etsy and Wix order IDs, fulfillment status, and tracking state.",
+  "customer-mappings": "Maps customers across channels while respecting Etsy email limitations.",
+  "sync-logs": "Stores sync diagnostics, warnings, failures, and replay context.",
+  "automation-rules": "Stores merchant automation triggers, actions, and paused/active state.",
+  "analytics-events": "Stores rollup events for channel revenue, order, and conversion dashboards.",
+  settings: "Stores merchant settings that are not secrets.",
+  "audit-logs": "Stores admin, automation, and lifecycle actions for reviewability.",
 };
 
 const DATA_COLLECTION_BLUEPRINTS: DataCollectionBlueprint[] = COLLECTIONS.map((collection) => ({
@@ -209,10 +236,10 @@ function getAppMarketReadiness(siteReadiness: WixSiteReadiness): AppMarketReadin
     {
       id: "data-collections",
       area: "Setup",
-      requirement: "App data collections are scoped to the app namespace.",
+      requirement: "App data collections are scoped to the app namespace and back dashboard writes.",
       status: "Action required",
-      evidence: "Collection blueprints use full IDs like <app-namespace>/SyncProfiles.",
-      nextStep: "Create Data Collection extensions in Wix Dev Center or update this template after the real app namespace is known.",
+      evidence: "Dashboard mutations fail closed until the <app-namespace>/settings collection is replaced with the real app namespace.",
+      nextStep: "Create Data Collection extensions in Wix Dev Center, replace <app-namespace>, and keep the settings idSuffix exactly lower-kebab-case.",
     },
     {
       id: "performance-validation",
@@ -225,7 +252,7 @@ function getAppMarketReadiness(siteReadiness: WixSiteReadiness): AppMarketReadin
   ];
 }
 
-let etsyAccounts: EtsyAccount[] = [
+const SEEDED_ETSY_ACCOUNTS: EtsyAccount[] = [
   {
     id: "etsy-shop-001",
     shopName: "Northstar Handmade",
@@ -248,7 +275,7 @@ let etsyAccounts: EtsyAccount[] = [
   },
 ];
 
-let syncProfiles: SyncProfile[] = [
+const SEEDED_SYNC_PROFILES: SyncProfile[] = [
   {
     id: "profile-primary",
     name: "Two-way catalog operations",
@@ -277,7 +304,7 @@ let syncProfiles: SyncProfile[] = [
   },
 ];
 
-let conflicts: Conflict[] = [
+const SEEDED_CONFLICTS: Conflict[] = [
   {
     id: "conflict-101",
     type: "Inventory",
@@ -297,6 +324,209 @@ let conflicts: Conflict[] = [
     impact: "Pricing rule has already applied the marketplace uplift.",
   },
 ];
+
+function cloneEtsyAccount(account: EtsyAccount): EtsyAccount {
+  return { ...account, scopes: [...account.scopes] };
+}
+
+function cloneSyncProfile(profile: SyncProfile): SyncProfile {
+  return { ...profile };
+}
+
+function cloneConflict(conflict: Conflict): Conflict {
+  return { ...conflict };
+}
+
+function createTenantState(): TenantDashboardState {
+  return {
+    etsyAccounts: SEEDED_ETSY_ACCOUNTS.map(cloneEtsyAccount),
+    syncProfiles: SEEDED_SYNC_PROFILES.map(cloneSyncProfile),
+    conflicts: SEEDED_CONFLICTS.map(cloneConflict),
+    manualSyncJobs: [],
+  };
+}
+
+function assertPersistenceConfigured() {
+  if (SETTINGS_COLLECTION_ID.includes("<app-namespace>")) {
+    throw new Error(
+      "EtsySync Pro requires a real app namespace and the app-scoped settings data collection before dashboard data can be read or changed."
+    );
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function requireStringField(record: Record<string, unknown>, fieldName: string): string {
+  const value = record[fieldName];
+
+  if (typeof value !== "string") {
+    throw new Error(`Persisted field ${fieldName} is invalid.`);
+  }
+
+  return value;
+}
+
+function requireNumberField(record: Record<string, unknown>, fieldName: string): number {
+  const value = record[fieldName];
+
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`Persisted field ${fieldName} is invalid.`);
+  }
+
+  return value;
+}
+
+function requireBooleanField(record: Record<string, unknown>, fieldName: string): boolean {
+  const value = record[fieldName];
+
+  if (typeof value !== "boolean") {
+    throw new Error(`Persisted field ${fieldName} is invalid.`);
+  }
+
+  return value;
+}
+
+function requireStringArrayField(record: Record<string, unknown>, fieldName: string): string[] {
+  const value = record[fieldName];
+
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) {
+    throw new Error(`Persisted field ${fieldName} is invalid.`);
+  }
+
+  return [...value];
+}
+
+function parsePersistedArray<T>(
+  value: unknown,
+  fieldName: string,
+  parser: (record: Record<string, unknown>) => T,
+): T[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Persisted field ${fieldName} is invalid.`);
+  }
+
+  return value.map((entry) => {
+    if (!isRecord(entry)) {
+      throw new Error(`Persisted field ${fieldName} contains an invalid entry.`);
+    }
+
+    return parser(entry);
+  });
+}
+
+function parseEtsyAccount(record: Record<string, unknown>): EtsyAccount {
+  return {
+    id: requireStringField(record, "id"),
+    shopName: requireStringField(record, "shopName"),
+    shopUrl: requireStringField(record, "shopUrl"),
+    status: assertSyncStatus(requireStringField(record, "status")),
+    scopes: requireStringArrayField(record, "scopes"),
+    lastConnectedAt: requireStringField(record, "lastConnectedAt"),
+    productLimit: requireNumberField(record, "productLimit"),
+    connectedBy: requireStringField(record, "connectedBy"),
+  };
+}
+
+function parseSyncProfile(record: Record<string, unknown>): SyncProfile {
+  return {
+    id: requireStringField(record, "id"),
+    name: requireStringField(record, "name"),
+    mode: assertSyncMode(requireStringField(record, "mode")),
+    status: assertSyncStatus(requireStringField(record, "status")),
+    productScope: requireStringField(record, "productScope"),
+    inventoryBuffer: requireNumberField(record, "inventoryBuffer"),
+    pricingFormula: requireStringField(record, "pricingFormula"),
+    syncImages: requireBooleanField(record, "syncImages"),
+    syncOrders: requireBooleanField(record, "syncOrders"),
+    syncCustomers: requireBooleanField(record, "syncCustomers"),
+    updatedAt: requireStringField(record, "updatedAt"),
+  };
+}
+
+function parseConflict(record: Record<string, unknown>): Conflict {
+  const type = requireStringField(record, "type");
+  const recommendation = requireStringField(record, "recommendation");
+
+  if (type !== "Price" && type !== "Inventory" && type !== "Listing" && type !== "Variant") {
+    throw new Error("Persisted conflict type is invalid.");
+  }
+
+  if (recommendation !== "Wix wins" && recommendation !== "Etsy wins" && recommendation !== "Manual review") {
+    throw new Error("Persisted conflict recommendation is invalid.");
+  }
+
+  return {
+    id: requireStringField(record, "id"),
+    type,
+    object: requireStringField(record, "object"),
+    wixValue: requireStringField(record, "wixValue"),
+    etsyValue: requireStringField(record, "etsyValue"),
+    recommendation,
+    impact: requireStringField(record, "impact"),
+  };
+}
+
+function parseManualSyncJob(record: Record<string, unknown>): ManualSyncJob {
+  const status = requireStringField(record, "status");
+
+  if (status !== "syncing" && status !== "failed") {
+    throw new Error("Persisted manual sync job status is invalid.");
+  }
+
+  return {
+    id: requireStringField(record, "id"),
+    scope: assertManualSyncScope(requireStringField(record, "scope")),
+    status,
+    message: requireStringField(record, "message"),
+    queuedAt: requireStringField(record, "queuedAt"),
+    affectedRecords: requireNumberField(record, "affectedRecords"),
+  };
+}
+
+async function saveTenantState(state: TenantDashboardState, siteReadiness: WixSiteReadiness) {
+  assertPersistenceConfigured();
+
+  await auth.elevate(items.save)(SETTINGS_COLLECTION_ID, {
+    _id: TENANT_STATE_ITEM_ID,
+    instanceId: siteReadiness.instanceId,
+    originInstanceId: siteReadiness.originInstanceId ?? "",
+    etsyAccounts: state.etsyAccounts,
+    syncProfiles: state.syncProfiles,
+    conflicts: state.conflicts,
+    manualSyncJobs: state.manualSyncJobs,
+  });
+}
+
+async function getTenantState(siteReadiness: WixSiteReadiness = DEFAULT_SITE_READINESS): Promise<TenantDashboardState> {
+  assertPersistenceConfigured();
+
+  const persistedState = await auth.elevate(items.get)(SETTINGS_COLLECTION_ID, TENANT_STATE_ITEM_ID);
+
+  if (!persistedState) {
+    const createdState = createTenantState();
+    await saveTenantState(createdState, siteReadiness);
+    return createdState;
+  }
+
+  if (!isRecord(persistedState)) {
+    throw new Error("Persisted EtsySync state is invalid.");
+  }
+
+  const persistedInstanceId = requireStringField(persistedState, "instanceId");
+
+  if (persistedInstanceId !== siteReadiness.instanceId) {
+    throw new Error("Persisted EtsySync state does not belong to this Wix app instance.");
+  }
+
+  return {
+    etsyAccounts: parsePersistedArray(persistedState.etsyAccounts, "etsyAccounts", parseEtsyAccount),
+    syncProfiles: parsePersistedArray(persistedState.syncProfiles, "syncProfiles", parseSyncProfile),
+    conflicts: parsePersistedArray(persistedState.conflicts, "conflicts", parseConflict),
+    manualSyncJobs: parsePersistedArray(persistedState.manualSyncJobs, "manualSyncJobs", parseManualSyncJob),
+  };
+}
 
 const automationRules: AutomationRule[] = [
   {
@@ -333,10 +563,83 @@ const automationRules: AutomationRule[] = [
   },
 ];
 
-export function getEtsySyncData(siteReadiness: WixSiteReadiness = DEFAULT_SITE_READINESS): EtsySyncDashboardData {
+const VALID_SYNC_MODES: SyncMode[] = ["wix-to-etsy", "etsy-to-wix", "two-way"];
+const VALID_SYNC_STATUSES: SyncStatus[] = ["healthy", "syncing", "warning", "failed", "paused", "stale"];
+const VALID_MANUAL_SYNC_SCOPES: ManualSyncScope[] = [
+  "full-catalog",
+  "filtered-catalog",
+  "priority-conflicts",
+];
+
+function assertNonEmptyString(value: unknown, fieldName: string, maxLength: number): string {
+  if (typeof value !== "string") {
+    throw new Error(`${fieldName} must be a string.`);
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    throw new Error(`${fieldName} is required.`);
+  }
+
+  if (trimmedValue.length > maxLength) {
+    throw new Error(`${fieldName} must be ${maxLength} characters or less.`);
+  }
+
+  return trimmedValue;
+}
+
+function assertIntegerInRange(value: unknown, fieldName: string, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`${fieldName} must be an integer between ${min} and ${max}.`);
+  }
+
+  return value;
+}
+
+function assertSyncMode(value: unknown): SyncMode {
+  if (VALID_SYNC_MODES.includes(value as SyncMode)) {
+    return value as SyncMode;
+  }
+
+  throw new Error("Sync mode is invalid.");
+}
+
+function assertSyncStatus(value: unknown): SyncStatus {
+  if (VALID_SYNC_STATUSES.includes(value as SyncStatus)) {
+    return value as SyncStatus;
+  }
+
+  throw new Error("Sync status is invalid.");
+}
+
+function assertManualSyncScope(value: unknown): ManualSyncScope {
+  if (VALID_MANUAL_SYNC_SCOPES.includes(value as ManualSyncScope)) {
+    return value as ManualSyncScope;
+  }
+
+  throw new Error("Manual sync scope is invalid.");
+}
+
+function syncJobsToLogs(jobs: ManualSyncJob[]): SyncLog[] {
+  return jobs.map((job) => ({
+    id: `log-${job.id}`,
+    level: job.status === "failed" ? "Failed" : "Info",
+    event: job.scope === "priority-conflicts" ? "Priority conflict sync queued" : "Manual sync queued",
+    object: `${job.affectedRecords} record(s) / ${job.scope}`,
+    createdAt: job.queuedAt,
+    diagnosticId: job.id,
+  }));
+}
+
+export async function getEtsySyncData(
+  siteReadiness: WixSiteReadiness = DEFAULT_SITE_READINESS,
+): Promise<EtsySyncDashboardData> {
+  const tenantState = await getTenantState(siteReadiness);
+
   return {
-    etsyAccounts,
-    syncProfiles,
+    etsyAccounts: tenantState.etsyAccounts,
+    syncProfiles: tenantState.syncProfiles,
     productMappings: [
       {
         id: "mapping-001",
@@ -509,6 +812,7 @@ export function getEtsySyncData(siteReadiness: WixSiteReadiness = DEFAULT_SITE_R
       },
     ],
     syncLogs: [
+      ...syncJobsToLogs(tenantState.manualSyncJobs),
       {
         id: "log-001",
         level: "Info",
@@ -589,7 +893,8 @@ export function getEtsySyncData(siteReadiness: WixSiteReadiness = DEFAULT_SITE_R
         conversionTrend: "+7.5%",
       },
     ],
-    conflicts,
+    conflicts: tenantState.conflicts,
+    manualSyncJobs: tenantState.manualSyncJobs,
     settings: {
       activePlan: "Pro",
       syncUpdateTargetSeconds: 5,
@@ -709,50 +1014,84 @@ export function getEtsySyncData(siteReadiness: WixSiteReadiness = DEFAULT_SITE_R
   };
 }
 
-export function updateSyncProfile(updatedProfile: SyncProfile): SyncProfile {
-  syncProfiles = syncProfiles.map((profile) =>
-    profile.id === updatedProfile.id
-      ? { ...updatedProfile, updatedAt: new Date().toISOString() }
-      : profile
-  );
+export async function updateSyncProfile(
+  updatedProfile: SyncProfile,
+  siteReadiness: WixSiteReadiness = DEFAULT_SITE_READINESS,
+): Promise<SyncProfile> {
+  const tenantState = await getTenantState(siteReadiness);
+  const profileId = assertNonEmptyString(updatedProfile.id, "Sync profile ID", 80);
+  const existingProfile = tenantState.syncProfiles.find((profile) => profile.id === profileId);
 
-  return syncProfiles.find((profile) => profile.id === updatedProfile.id)!;
-}
-
-export function connectEtsyShop(shopName: string): EtsyAccount {
-  const account: EtsyAccount = {
-    id: `etsy-shop-${etsyAccounts.length + 1}`,
-    shopName,
-    shopUrl: `https://www.etsy.com/shop/${shopName.replace(/\s+/g, "").toLowerCase()}`,
-    status: "syncing",
-    scopes: ["listings_r", "listings_w", "transactions_r", "shops_r"],
-    lastConnectedAt: now,
-    productLimit: 500,
-    connectedBy: "Current admin",
-  };
-
-  etsyAccounts = [...etsyAccounts, account];
-  return account;
-}
-
-export function runManualSync(scope: string) {
-  return {
-    id: `manual-sync-${Date.now()}`,
-    scope,
-    status: "syncing" as const,
-    message: "Manual sync queued. Existing data remains unchanged until the job completes.",
-    queuedAt: new Date().toISOString(),
-  };
-}
-
-export function resolveConflict(conflictId: string, resolution: Conflict["recommendation"]) {
-  const conflict = conflicts.find((item) => item.id === conflictId);
-
-  if (!conflict) {
-    throw new Error(`Conflict ${conflictId} was not found.`);
+  if (!existingProfile) {
+    throw new Error(`Sync profile ${profileId} was not found.`);
   }
 
-  conflicts = conflicts.filter((item) => item.id !== conflictId);
+  const sanitizedProfile: SyncProfile = {
+    ...existingProfile,
+    name: assertNonEmptyString(updatedProfile.name, "Profile name", 80),
+    mode: assertSyncMode(updatedProfile.mode),
+    status: assertSyncStatus(updatedProfile.status),
+    productScope: assertNonEmptyString(updatedProfile.productScope, "Product scope", 160),
+    inventoryBuffer: assertIntegerInRange(updatedProfile.inventoryBuffer, "Inventory buffer", 0, 9999),
+    pricingFormula: assertNonEmptyString(updatedProfile.pricingFormula, "Pricing formula", 120),
+    syncImages: Boolean(updatedProfile.syncImages),
+    syncOrders: Boolean(updatedProfile.syncOrders),
+    syncCustomers: Boolean(updatedProfile.syncCustomers),
+    updatedAt: new Date().toISOString(),
+  };
+
+  tenantState.syncProfiles = tenantState.syncProfiles.map((profile) =>
+    profile.id === sanitizedProfile.id ? sanitizedProfile : profile
+  );
+  await saveTenantState(tenantState, siteReadiness);
+
+  return sanitizedProfile;
+}
+
+export async function runManualSync(
+  scope: ManualSyncScope,
+  siteReadiness: WixSiteReadiness = DEFAULT_SITE_READINESS,
+): Promise<ManualSyncJob> {
+  const tenantState = await getTenantState(siteReadiness);
+  const sanitizedScope = assertManualSyncScope(scope);
+  const affectedRecords =
+    sanitizedScope === "priority-conflicts" ? tenantState.conflicts.length : 4;
+  const job: ManualSyncJob = {
+    id: `manual-sync-${Date.now()}-${tenantState.manualSyncJobs.length + 1}`,
+    scope: sanitizedScope,
+    status: "syncing",
+    message: "Manual sync queued. Existing data remains unchanged until the job completes.",
+    queuedAt: new Date().toISOString(),
+    affectedRecords,
+  };
+
+  tenantState.manualSyncJobs = [job, ...tenantState.manualSyncJobs].slice(0, 25);
+  await saveTenantState(tenantState, siteReadiness);
+
+  return {
+    ...job,
+  };
+}
+
+export async function resolveConflict(
+  conflictId: string,
+  resolution: Conflict["recommendation"],
+  siteReadiness: WixSiteReadiness = DEFAULT_SITE_READINESS,
+): Promise<Conflict & { resolution: Conflict["recommendation"]; resolvedAt: string }> {
+  const tenantState = await getTenantState(siteReadiness);
+  const sanitizedConflictId = assertNonEmptyString(conflictId, "Conflict ID", 80);
+  const conflict = tenantState.conflicts.find((item) => item.id === sanitizedConflictId);
+
+  if (!conflict) {
+    throw new Error(`Conflict ${sanitizedConflictId} was not found.`);
+  }
+
+  if (resolution !== conflict.recommendation) {
+    throw new Error("Conflict resolution must match the recommended safe action.");
+  }
+
+  tenantState.conflicts = tenantState.conflicts.filter((item) => item.id !== sanitizedConflictId);
+  await saveTenantState(tenantState, siteReadiness);
 
   return {
     ...conflict,

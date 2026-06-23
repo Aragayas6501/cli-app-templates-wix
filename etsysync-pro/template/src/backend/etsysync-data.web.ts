@@ -1,41 +1,50 @@
 import { webMethod, Permissions } from "@wix/web-methods";
-import type { Conflict, SyncProfile } from "../types";
+import type { Conflict, ManualSyncScope, SyncProfile } from "../types";
 import {
-  connectEtsyShop as connectEtsyShopRecord,
   getEtsySyncData,
   resolveConflict as resolveConflictRecord,
   runManualSync as queueManualSync,
   updateSyncProfile as updateSyncProfileRecord,
 } from "./database";
 import { getWixSiteReadiness } from "./wix-readiness";
+import type { WixSiteReadiness } from "../types";
 
-export const getDashboardData = webMethod(Permissions.Admin, async () => {
+async function getVerifiedSiteReadiness(): Promise<WixSiteReadiness> {
   const siteReadiness = await getWixSiteReadiness();
 
-  return getEtsySyncData(siteReadiness);
+  if (siteReadiness.instanceStatus !== "Confirmed" || !siteReadiness.instanceId.trim()) {
+    throw new Error("Wix app instance identity could not be verified. Tenant-scoped dashboard data is unavailable.");
+  }
+
+  return siteReadiness;
+}
+
+export const getDashboardData = webMethod(Permissions.Admin, async () => {
+  const siteReadiness = await getVerifiedSiteReadiness();
+
+  return await getEtsySyncData(siteReadiness);
 });
 
 export const saveSyncProfile = webMethod(
   Permissions.Admin,
   async (profile: SyncProfile) => {
-    return updateSyncProfileRecord(profile);
+    const siteReadiness = await getVerifiedSiteReadiness();
+
+    return await updateSyncProfileRecord(profile, siteReadiness);
   }
 );
 
-export const connectEtsyShop = webMethod(
-  Permissions.Admin,
-  async (shopName: string) => {
-    return connectEtsyShopRecord(shopName);
-  }
-);
+export const runManualSync = webMethod(Permissions.Admin, async (scope: ManualSyncScope) => {
+  const siteReadiness = await getVerifiedSiteReadiness();
 
-export const runManualSync = webMethod(Permissions.Admin, async (scope: string) => {
-  return queueManualSync(scope);
+  return await queueManualSync(scope, siteReadiness);
 });
 
 export const resolveConflict = webMethod(
   Permissions.Admin,
   async (conflictId: string, resolution: Conflict["recommendation"]) => {
-    return resolveConflictRecord(conflictId, resolution);
+    const siteReadiness = await getVerifiedSiteReadiness();
+
+    return await resolveConflictRecord(conflictId, resolution, siteReadiness);
   }
 );

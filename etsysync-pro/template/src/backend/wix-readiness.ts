@@ -3,6 +3,19 @@ import { auth } from "@wix/essentials";
 import { catalogVersioning } from "@wix/stores";
 import type { CatalogVersion, ReviewStatus, WixSiteReadiness } from "../types";
 
+const LOCAL_PREVIEW_INSTANCE_ID = "local-preview-instance";
+
+type AppInstanceSnapshot = Record<string, unknown> & {
+  _id?: string;
+  id?: string;
+  instanceId?: string;
+  appInstanceId?: string;
+  originInstanceId?: string;
+  originAppInstanceId?: string;
+  isFree?: boolean;
+  billing?: unknown;
+};
+
 function normalizeCatalogVersion(value: unknown): CatalogVersion {
   if (value === "V1_CATALOG" || value === "V3_CATALOG" || value === "STORES_NOT_INSTALLED") {
     return value;
@@ -23,7 +36,13 @@ function statusForCatalog(catalogVersion: CatalogVersion): ReviewStatus {
   return "Needs confirmation";
 }
 
+function firstString(...values: unknown[]): string | undefined {
+  return values.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+}
+
 export async function getWixSiteReadiness(): Promise<WixSiteReadiness> {
+  let instanceId = LOCAL_PREVIEW_INSTANCE_ID;
+  let originInstanceId: string | undefined;
   let instanceStatus: ReviewStatus = "Needs confirmation";
   let billingStatus: ReviewStatus = "Needs confirmation";
   let identityEvidence = "App instance could not be read in the current preview context.";
@@ -33,10 +52,17 @@ export async function getWixSiteReadiness(): Promise<WixSiteReadiness> {
     const { instance } = await auth.elevate(appInstances.getAppInstance)();
 
     if (instance) {
+      const appInstance = instance as AppInstanceSnapshot;
+      instanceId =
+        firstString(appInstance.instanceId, appInstance.appInstanceId, appInstance._id, appInstance.id) ??
+        LOCAL_PREVIEW_INSTANCE_ID;
+      originInstanceId = firstString(appInstance.originInstanceId, appInstance.originAppInstanceId);
       instanceStatus = "Confirmed";
-      billingStatus = instance.isFree || !instance.billing ? "Action required" : "Confirmed";
+      billingStatus = appInstance.isFree || !appInstance.billing ? "Action required" : "Confirmed";
       identityEvidence = "Dashboard data is loaded through the current Wix app instance context.";
-      originInstanceEvidence = "Use originInstanceId during production provisioning to copy eligible settings on site duplication.";
+      originInstanceEvidence = originInstanceId
+        ? `Copied-site origin detected from ${originInstanceId}; copy only eligible non-secret settings for this instance.`
+        : "No originInstanceId reported for this install.";
     }
   } catch (error) {
     console.error("Failed to read Wix app instance readiness.", error);
@@ -59,7 +85,8 @@ export async function getWixSiteReadiness(): Promise<WixSiteReadiness> {
         ? "Catalog version could not be read. Confirm Stores permissions and installation."
         : `Wix Stores catalog version detected: ${catalogVersion}. Use the matching V1/V3 adapter before catalog writes.`;
 
-  return {
+  const readiness: WixSiteReadiness = {
+    instanceId,
     catalogVersion,
     storesStatus,
     instanceStatus,
@@ -68,4 +95,10 @@ export async function getWixSiteReadiness(): Promise<WixSiteReadiness> {
     storesEvidence,
     originInstanceEvidence,
   };
+
+  if (originInstanceId) {
+    readiness.originInstanceId = originInstanceId;
+  }
+
+  return readiness;
 }

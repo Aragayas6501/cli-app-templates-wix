@@ -15,7 +15,7 @@ Use this template as the starting point for a production Etsy integration. Repla
 
 The generated app is structured for App Market preparation, but these Wix Dev Center and production integration steps must be completed before submission:
 
-1. Configure the app namespace in Wix Dev Center, then create the app data collections with full IDs like `<app-namespace>/SyncProfiles`, `<app-namespace>/ProductMappings`, and `<app-namespace>/AuditLogs`.
+1. Configure the app namespace in Wix Dev Center, replace the `<app-namespace>` collection placeholder, then create the app data collections with full IDs like `<app-namespace>/sync-profiles`, `<app-namespace>/product-mappings`, and `<app-namespace>/audit-logs`.
 2. Add only the required Wix permissions in Dev Center: `SCOPE.STORES.CATALOG_READ_LIMITED`, `SCOPE.DC-STORES.READ-PRODUCTS`, `SCOPE.DC-STORES.MANAGE-PRODUCTS`, `SCOPE.DC-STORES.READ-ORDERS`, `SCOPE.STORES.PRODUCT_READ_ADMIN`, `SCOPE.STORES.PRODUCT_WRITE`, `SCOPE.STORES.INVENTORY_ITEM_READ`, `SCOPE.STORES.INVENTORY_ITEM_WRITE`, `SCOPE.CATEGORIES.CATEGORY_READ`, and `SCOPE.CATEGORIES.CATEGORY_WRITE`.
 3. Keep Wix Stores compatibility dual-path: call `catalogVersioning.getCatalogVersion()` before every Stores operation and route Catalog V1 to legacy products/inventory/collections APIs and Catalog V3 to productsV3, inventoryItemsV3, and categories APIs.
 4. Configure Wix Billing plans for Free, Starter, Pro, Business, and Enterprise tiers. Do not use external upgrade or purchase links for paid app access.

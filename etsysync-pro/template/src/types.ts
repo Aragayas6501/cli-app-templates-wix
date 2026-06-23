@@ -14,19 +14,21 @@ export type ReviewStatus = "Confirmed" | "Action required" | "Needs confirmation
 
 export type CatalogVersion = "V1_CATALOG" | "V3_CATALOG" | "STORES_NOT_INSTALLED" | "UNKNOWN";
 
+export type ManualSyncScope = "full-catalog" | "filtered-catalog" | "priority-conflicts";
+
 export type CollectionName =
-  | "EtsyAccounts"
-  | "SyncProfiles"
-  | "ProductMappings"
-  | "VariantMappings"
-  | "InventoryEvents"
-  | "OrderMappings"
-  | "CustomerMappings"
-  | "SyncLogs"
-  | "AutomationRules"
-  | "AnalyticsEvents"
-  | "Settings"
-  | "AuditLogs";
+  | "etsy-accounts"
+  | "sync-profiles"
+  | "product-mappings"
+  | "variant-mappings"
+  | "inventory-events"
+  | "order-mappings"
+  | "customer-mappings"
+  | "sync-logs"
+  | "automation-rules"
+  | "analytics-events"
+  | "settings"
+  | "audit-logs";
 
 export interface EtsyAccount {
   id: string;
@@ -190,6 +192,8 @@ export interface DataCollectionBlueprint {
 }
 
 export interface WixSiteReadiness {
+  instanceId: string;
+  originInstanceId?: string;
   catalogVersion: CatalogVersion;
   storesStatus: ReviewStatus;
   instanceStatus: ReviewStatus;
@@ -197,6 +201,15 @@ export interface WixSiteReadiness {
   identityEvidence: string;
   storesEvidence: string;
   originInstanceEvidence: string;
+}
+
+export interface ManualSyncJob {
+  id: string;
+  scope: ManualSyncScope;
+  status: Extract<SyncStatus, "syncing" | "failed">;
+  message: string;
+  queuedAt: string;
+  affectedRecords: number;
 }
 
 export interface PricingPlan {
@@ -239,6 +252,7 @@ export interface EtsySyncDashboardData {
   customerMappings: CustomerMapping[];
   syncLogs: SyncLog[];
   automationRules: AutomationRule[];
+  manualSyncJobs: ManualSyncJob[];
   analyticsMetrics: AnalyticsMetric[];
   analyticsEvents: AnalyticsEvent[];
   conflicts: Conflict[];

@@ -27,7 +27,7 @@ In the project directory, you can run:
 
 This template includes App Market readiness checks in the dashboard, but Wix Dev Center configuration is still required before submission:
 
-1. Set the real app namespace and create app data collections with IDs like `<app-namespace>/SyncProfiles`, `<app-namespace>/ProductMappings`, and `<app-namespace>/AuditLogs`.
+1. Set the real app namespace in the collection placeholder and create app data collections with IDs like `<app-namespace>/sync-profiles`, `<app-namespace>/product-mappings`, and `<app-namespace>/audit-logs`.
 2. Configure only the minimum Stores permissions listed in the Settings & billing tab.
 3. Keep both Wix Stores Catalog V1 and V3 code paths. Always call `catalogVersioning.getCatalogVersion()` before product, inventory, collection, or category operations.
 4. Configure paid tiers through Wix Billing. Do not link to external checkout for app plan upgrades.
