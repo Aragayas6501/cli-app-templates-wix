@@ -1,0 +1,6 @@
+node_modules
+.wix
+dist
+*.log
+.env
+.DS_Store

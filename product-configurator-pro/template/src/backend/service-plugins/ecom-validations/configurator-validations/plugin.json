@@ -1,0 +1,6 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/ecom-validations.json",
+  "id": "<%= generatePageID() %>",
+  "name": "configurator-validations",
+  "validateInCart": true
+}

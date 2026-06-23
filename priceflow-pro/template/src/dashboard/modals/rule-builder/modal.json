@@ -1,0 +1,8 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/dashboard-modal.json",
+  "id": "a8655b51-e0e4-40e6-9569-8d07e3e0cc1e",
+  "title": "Create Pricing Rule",
+  "width": 720,
+  "height": 720
+}
+

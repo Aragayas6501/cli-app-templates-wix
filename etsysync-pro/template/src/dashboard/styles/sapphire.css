@@ -1,0 +1,681 @@
+:root {
+  --sc-color-primary: #0052FF;
+  --sc-color-secondary: #EBF1FF;
+  --sc-color-tertiary: #BF3003;
+  --sc-color-neutral: #0F172A;
+  --sc-color-white: #FFFFFF;
+  --sc-text-secondary: rgba(15, 23, 42, 0.72);
+  --sc-text-muted: rgba(15, 23, 42, 0.52);
+  --sc-border: rgba(15, 23, 42, 0.14);
+  --sc-border-strong: rgba(15, 23, 42, 0.24);
+  --sc-focus: rgba(0, 82, 255, 0.34);
+  --sc-primary-soft: rgba(0, 82, 255, 0.08);
+  --sc-tertiary-soft: rgba(191, 48, 3, 0.08);
+  --sc-tertiary-border: rgba(191, 48, 3, 0.24);
+  --sc-radius-sm: 4px;
+  --sc-radius: 8px;
+  --sc-radius-md: 12px;
+  --sc-radius-lg: 16px;
+  --sc-radius-xl: 24px;
+  --sc-space-xs: 8px;
+  --sc-space-sm: 16px;
+  --sc-space-md: 24px;
+  --sc-space-lg: 40px;
+  --sc-space-xl: 64px;
+  --sc-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --sc-ease-alt: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.sapphire-canvas {
+  --mouse-x: 50%;
+  --mouse-y: 50%;
+  min-height: 100vh;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 32px;
+  color: var(--sc-color-neutral);
+  font-family: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background-color: var(--sc-color-white);
+  background-image: radial-gradient(circle, rgba(15, 23, 42, 0.14) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+}
+
+.sapphire-canvas::before,
+.sapphire-canvas::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sapphire-canvas::before {
+  z-index: -2;
+  background: radial-gradient(520px circle at var(--mouse-x) var(--mouse-y), rgba(0, 82, 255, 0.14), rgba(0, 82, 255, 0.065) 36%, transparent 72%);
+  transition: opacity 160ms var(--sc-ease-alt);
+}
+
+.sapphire-canvas::after {
+  z-index: -1;
+  background-image: radial-gradient(circle, rgba(0, 82, 255, 0.34) 1px, transparent 1.2px);
+  background-size: 18px 18px;
+  mask-image: radial-gradient(360px circle at var(--mouse-x) var(--mouse-y), black, transparent 72%);
+  opacity: 0.54;
+}
+
+.etsysync-shell {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.sapphire-workspace {
+  min-height: calc(100vh - 64px);
+  padding: 24px;
+  background: color-mix(in srgb, var(--sc-color-secondary) 84%, var(--sc-color-white));
+  border: 2px solid rgba(0, 82, 255, 0.72);
+  border-radius: var(--sc-radius-xl);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82), 0 20px 80px rgba(0, 82, 255, 0.08);
+}
+
+.sc-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+
+.sc-kicker {
+  margin: 0 0 8px;
+  color: var(--sc-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.24;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.sc-title {
+  margin: 0;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+}
+
+.sc-subtitle {
+  max-width: 760px;
+  margin: 8px 0 0;
+  color: var(--sc-text-secondary);
+  font-size: 16px;
+  line-height: 1.56;
+  letter-spacing: -0.006em;
+}
+
+.sc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.sc-btn {
+  min-height: 40px;
+  border-radius: var(--sc-radius);
+  border: 1px solid var(--sc-border);
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.24;
+  letter-spacing: -0.003em;
+  cursor: pointer;
+  transition: background 160ms var(--sc-ease-alt), border-color 160ms var(--sc-ease-alt), transform 80ms var(--sc-ease-standard), box-shadow 160ms var(--sc-ease-alt);
+}
+
+.sc-btn:focus-visible,
+.sc-tab:focus-visible,
+.sc-input:focus-visible,
+.sc-select:focus-visible,
+.sc-row-button:focus-visible {
+  outline: 3px solid var(--sc-focus);
+  outline-offset: 2px;
+}
+
+.sc-btn:active {
+  transform: scale(0.985) translateY(1px);
+}
+
+.sc-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+  transform: none;
+}
+
+.sc-btn-primary {
+  color: var(--sc-color-white);
+  background: var(--sc-color-primary);
+  border-color: color-mix(in srgb, var(--sc-color-primary) 76%, var(--sc-color-neutral));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), 0 8px 20px rgba(0, 82, 255, 0.12);
+}
+
+.sc-btn-primary:hover {
+  background: color-mix(in srgb, var(--sc-color-primary) 88%, var(--sc-color-neutral));
+}
+
+.sc-btn-secondary {
+  color: var(--sc-color-neutral);
+  background: var(--sc-color-white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.sc-btn-secondary:hover {
+  background: color-mix(in srgb, var(--sc-color-secondary) 66%, var(--sc-color-white));
+  border-color: rgba(0, 82, 255, 0.22);
+}
+
+.sc-btn-destructive {
+  color: var(--sc-color-white);
+  background: var(--sc-color-tertiary);
+  border-color: color-mix(in srgb, var(--sc-color-tertiary) 70%, var(--sc-color-neutral));
+}
+
+.sc-status-rail {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--sc-color-white) 88%, var(--sc-color-secondary));
+  border: 1px solid var(--sc-tertiary-border);
+  border-left: 4px solid var(--sc-color-tertiary);
+  border-radius: var(--sc-radius-md);
+}
+
+.sc-status-rail strong {
+  display: block;
+  font-size: 14px;
+  line-height: 1.24;
+}
+
+.sc-status-rail span {
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  line-height: 1.24;
+}
+
+.sc-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-bottom: 24px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--sc-color-secondary) 72%, var(--sc-color-white));
+  border: 1px solid rgba(0, 82, 255, 0.16);
+  border-radius: var(--sc-radius-lg);
+}
+
+.sc-tab {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius);
+  padding: 0 16px;
+  color: var(--sc-text-secondary);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sc-tab[aria-selected="true"] {
+  color: var(--sc-color-white);
+  background: var(--sc-color-primary);
+  border-color: color-mix(in srgb, var(--sc-color-primary) 72%, var(--sc-color-neutral));
+}
+
+.sc-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.sc-grid-two {
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.55fr);
+}
+
+.sc-grid-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sc-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.sapphire-card,
+.sapphire-soft-panel {
+  border-radius: var(--sc-radius);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.sapphire-card {
+  background: var(--sc-color-white);
+  border: 1px solid var(--sc-border);
+}
+
+.sapphire-soft-panel {
+  padding: 24px;
+  background: color-mix(in srgb, var(--sc-color-secondary) 78%, var(--sc-color-white));
+  border: 1px solid rgba(0, 82, 255, 0.16);
+  border-radius: var(--sc-radius-lg);
+}
+
+.sc-card-content {
+  padding: 16px;
+}
+
+.sc-card-header {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.sc-card-title {
+  margin: 0;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
+
+.sc-card-caption {
+  margin: 4px 0 0;
+  color: var(--sc-text-muted);
+  font-size: 13px;
+  line-height: 1.24;
+}
+
+.sc-metric {
+  min-height: 136px;
+  padding: 16px;
+}
+
+.sc-metric-value {
+  margin: 16px 0 4px;
+  font-family: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.16;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-metric-label,
+.sc-label {
+  margin: 0;
+  color: var(--sc-text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.24;
+}
+
+.sc-metric-trend {
+  margin: 0;
+  color: var(--sc-color-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.24;
+}
+
+.sc-onboarding {
+  display: grid;
+  gap: 8px;
+}
+
+.sc-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  background: var(--sc-color-white);
+}
+
+.sc-step strong {
+  display: block;
+  font-size: 14px;
+}
+
+.sc-step p {
+  margin: 4px 0 0;
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  line-height: 1.24;
+}
+
+.sc-status-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 9999px;
+  background: var(--sc-color-neutral);
+}
+
+.sc-status-dot[data-tone="primary"] {
+  background: var(--sc-color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 82, 255, 0.10);
+}
+
+.sc-status-dot[data-tone="tertiary"] {
+  background: var(--sc-color-tertiary);
+  box-shadow: 0 0 0 3px rgba(191, 48, 3, 0.10);
+}
+
+.sc-status-dot[data-tone="neutral"] {
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.sc-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.sc-input,
+.sc-select {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  padding: 0 12px;
+  color: var(--sc-color-neutral);
+  background: color-mix(in srgb, var(--sc-color-secondary) 60%, var(--sc-color-white));
+  font-size: 14px;
+  line-height: 1.24;
+}
+
+.sc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.sc-table th,
+.sc-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--sc-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.sc-table th {
+  color: var(--sc-text-muted);
+  background: color-mix(in srgb, var(--sc-color-secondary) 58%, var(--sc-color-white));
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.24;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.sc-table td {
+  color: var(--sc-color-neutral);
+}
+
+.sc-table tr:hover td {
+  background: rgba(0, 82, 255, 0.08);
+}
+
+.sc-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-badge {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--sc-border);
+  border-radius: 9999px;
+  color: var(--sc-color-neutral);
+  background: var(--sc-color-white);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.24;
+}
+
+.sc-badge[data-tone="primary"] {
+  color: var(--sc-color-primary);
+  background: var(--sc-primary-soft);
+  border-color: rgba(0, 82, 255, 0.22);
+}
+
+.sc-badge[data-tone="tertiary"] {
+  color: var(--sc-color-tertiary);
+  background: var(--sc-tertiary-soft);
+  border-color: var(--sc-tertiary-border);
+}
+
+.sc-badge[data-tone="neutral"] {
+  color: var(--sc-text-secondary);
+  background: color-mix(in srgb, var(--sc-color-secondary) 48%, var(--sc-color-white));
+}
+
+.sc-inspector {
+  position: sticky;
+  top: 24px;
+}
+
+.sc-inspector-section {
+  padding: 16px;
+  border-top: 1px solid var(--sc-border);
+}
+
+.sc-key-value {
+  display: grid;
+  gap: 8px;
+}
+
+.sc-key-value div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  font-size: 13px;
+  line-height: 1.47;
+}
+
+.sc-key-value dt {
+  color: var(--sc-text-muted);
+}
+
+.sc-key-value dd {
+  margin: 0;
+  color: var(--sc-color-neutral);
+}
+
+.sc-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sc-list-item {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius);
+  background: var(--sc-color-white);
+}
+
+.sc-list-item p {
+  margin: 4px 0 0;
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  line-height: 1.24;
+}
+
+.sc-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.sc-field label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sc-form-error {
+  margin: 12px 0 0;
+  color: var(--sc-color-tertiary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.sc-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.sc-plan {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.sc-plan[data-active="true"] {
+  border-color: rgba(0, 82, 255, 0.72);
+  background: color-mix(in srgb, var(--sc-color-secondary) 48%, var(--sc-color-white));
+}
+
+.sc-empty,
+.sc-loading,
+.sc-error {
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  padding: 40px;
+  text-align: center;
+}
+
+.sc-empty p,
+.sc-error p {
+  max-width: 520px;
+  color: var(--sc-text-secondary);
+  font-size: 15px;
+  line-height: 1.47;
+}
+
+.sc-error {
+  border: 1px solid var(--sc-tertiary-border);
+  border-radius: var(--sc-radius-lg);
+  background: var(--sc-tertiary-soft);
+}
+
+.sc-row-button {
+  border: 0;
+  padding: 0;
+  color: var(--sc-color-primary);
+  background: transparent;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+@media (max-width: 1023px) {
+  .sapphire-canvas {
+    padding: 16px;
+  }
+
+  .sapphire-workspace {
+    min-height: calc(100vh - 32px);
+    padding: 16px;
+  }
+
+  .sc-header,
+  .sc-grid-two,
+  .sc-grid-three,
+  .sc-metrics,
+  .sc-form-grid,
+  .sc-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sc-actions,
+  .sc-toolbar {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .sc-btn {
+    width: 100%;
+  }
+
+  .sc-table,
+  .sc-table thead,
+  .sc-table tbody,
+  .sc-table th,
+  .sc-table td,
+  .sc-table tr {
+    display: block;
+  }
+
+  .sc-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .sc-table tr {
+    margin-bottom: 8px;
+    border: 1px solid var(--sc-border);
+    border-radius: var(--sc-radius);
+    background: var(--sc-color-white);
+  }
+
+  .sc-table td {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .sc-table td::before {
+    content: attr(data-label);
+    color: var(--sc-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sapphire-canvas::before,
+  .sapphire-canvas::after,
+  .sc-btn,
+  .sc-tab {
+    transition: none;
+  }
+}

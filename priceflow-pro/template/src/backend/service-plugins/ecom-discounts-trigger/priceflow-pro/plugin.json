@@ -1,0 +1,5 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/ecom-discounts-trigger.json",
+  "id": "<%= generatePageID() %>",
+  "name": "PriceFlow Pro Discount Trigger"
+}

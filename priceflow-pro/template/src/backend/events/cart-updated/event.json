@@ -1,0 +1,6 @@
+{
+  "$schema": "https://dev.wix.com/wix-cli/schemas/event.json",
+  "id": "<%= generatePageID() %>",
+  "eventType": "wix.ecom.v1.cart_updated"
+}
+
