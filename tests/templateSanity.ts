@@ -32,7 +32,7 @@ export const templateSanity = (template: string, options: TemplateSanityOptions 
       await expect(installDependencies(cwd)).resolves.not.toThrow();
     }, installTimeout);
 
-    it("should successfully run typescheck", async () => {
+    it("should successfully run typecheck", async () => {
       await expect(checkTypes(cwd)).resolves.not.toThrow();
     }, timeout);
 

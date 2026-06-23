@@ -10,11 +10,16 @@ interface ElementProps {
 
 const WrappedElement = (props: ElementProps) => <ReturnFlowPortal {...props} />;
 
-const customElement = reactToWebComponent(WrappedElement, React, ReactDOM, {
-  props: {
-    headline: "string",
-    accentColor: "string",
-  },
-});
+const customElement = reactToWebComponent(
+  WrappedElement,
+  React,
+  ReactDOM as unknown as typeof ReactDOM,
+  {
+    props: {
+      headline: "string",
+      accentColor: "string",
+    },
+  }
+);
 
 export default customElement;
