@@ -1,0 +1,49 @@
+<!--
+  PinFlow Pinterest Tag.
+  Parameters are injected by Wix only inside attribute values, so the tag id and
+  enabled flag are rendered onto a config element and read from `dataset` in JS.
+  Configure these from the PinFlow dashboard → Settings (saved via
+  embeddedScripts.embedScript).
+-->
+<div
+  id="pinflow-pinterest-tag-config"
+  data-tag-id="{{pinterestTagId}}"
+  data-enabled="{{enabled}}"
+></div>
+
+<script type="module">
+  function initializePinflowPinterestTag() {
+    const config = document.getElementById("pinflow-pinterest-tag-config");
+    if (!config) return;
+
+    const { tagId, enabled } = config.dataset;
+
+    if (enabled !== "true" || !tagId) return;
+
+    if (!window.pintrk) {
+      window.pintrk = function () {
+        window.pintrk.queue.push(Array.prototype.slice.call(arguments));
+      };
+      const n = window.pintrk;
+      n.queue = [];
+      n.version = "3.0";
+      const t = document.createElement("script");
+      t.async = true;
+      t.src = "https://s.pinimg.com/ct/core.js";
+      const r = document.getElementsByTagName("script")[0];
+      if (!r?.parentNode) return;
+      r.parentNode.insertBefore(t, r);
+    }
+
+    window.pintrk("load", tagId);
+    window.pintrk("page");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initializePinflowPinterestTag, {
+      once: true,
+    });
+  } else {
+    initializePinflowPinterestTag();
+  }
+</script>
