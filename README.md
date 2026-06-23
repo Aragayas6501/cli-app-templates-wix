@@ -30,6 +30,7 @@ The repo contains the following app templates to get you started:
 + [Stock Countdown](./stock-countdown/README.md)
 + [Shipping Rates](./shipping-rates/README.md)
 + [Product Configurator Pro](./product-configurator-pro/README.md)
++ [PriceFlow Pro](./priceflow-pro/README.md)
 
 ## More templates
 
