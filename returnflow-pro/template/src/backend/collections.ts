@@ -22,3 +22,23 @@ export const collectionIds = {
   storeCredits: `${appNamespace}/${collectionSuffixes.storeCredits}`,
   lookupTokens: `${appNamespace}/${collectionSuffixes.lookupTokens}`,
 } as const;
+
+export const fallbackCollectionIds = {
+  settings: collectionSuffixes.settings,
+  orders: collectionSuffixes.orders,
+  returns: collectionSuffixes.returns,
+  refunds: collectionSuffixes.refunds,
+  exchanges: collectionSuffixes.exchanges,
+  storeCredits: collectionSuffixes.storeCredits,
+  lookupTokens: collectionSuffixes.lookupTokens,
+} as const;
+
+export const collectionIdCandidates = {
+  settings: [collectionIds.settings, fallbackCollectionIds.settings],
+  orders: [collectionIds.orders, fallbackCollectionIds.orders],
+  returns: [collectionIds.returns, fallbackCollectionIds.returns],
+  refunds: [collectionIds.refunds, fallbackCollectionIds.refunds],
+  exchanges: [collectionIds.exchanges, fallbackCollectionIds.exchanges],
+  storeCredits: [collectionIds.storeCredits, fallbackCollectionIds.storeCredits],
+  lookupTokens: [collectionIds.lookupTokens, fallbackCollectionIds.lookupTokens],
+} as const;

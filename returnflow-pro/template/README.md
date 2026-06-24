@@ -17,9 +17,12 @@ Update these values in `wix.config.json`, `app-config.json`, and `.wix/app.confi
 ## Required install-time permissions
 
 The template requests the following scopes for install-time authorization:
-- `WIX_DATA`
+- `SCOPE.DC-DATA.READ`
+- `SCOPE.DC-DATA.WRITE`
 - `SCOPE.STORES.CATALOG_READ_LIMITED`
+- `SCOPE.DC-STORES.READ-PRODUCTS`
+- `SCOPE.DC-STORES.READ-ORDERS`
+- `SCOPE.STORES.PRODUCT_READ`
 - `SCOPE.STORES.PRODUCT_READ_ADMIN`
-- `SCOPE.STORES.ORDERS_READ`
 
 The data layer collections in `src/backend/collections.ts` are scoped to the configured namespace so the app data is installed under the correct app identity.

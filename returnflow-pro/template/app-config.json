@@ -3,9 +3,12 @@
   "codeIdentifier": "rto_flow_pro",
   "projectType": "App",
   "permissions": [
-    "WIX_DATA",
+    "SCOPE.DC-DATA.READ",
+    "SCOPE.DC-DATA.WRITE",
     "SCOPE.STORES.CATALOG_READ_LIMITED",
-    "SCOPE.STORES.PRODUCT_READ_ADMIN",
-    "SCOPE.STORES.ORDERS_READ"
+    "SCOPE.DC-STORES.READ-PRODUCTS",
+    "SCOPE.DC-STORES.READ-ORDERS",
+    "SCOPE.STORES.PRODUCT_READ",
+    "SCOPE.STORES.PRODUCT_READ_ADMIN"
   ]
 }
