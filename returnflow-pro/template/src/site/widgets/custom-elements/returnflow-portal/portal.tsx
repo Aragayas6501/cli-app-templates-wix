@@ -1,8 +1,5 @@
 import React, { type FC, useState } from "react";
-import {
-  lookupPortalOrder,
-  submitPortalReturnRequest,
-} from "backend/returnflow-data.web";
+import { httpClient } from "@wix/essentials";
 import type { PortalLookupResult, ResolutionPreference, ReturnRequest } from "../../../../types";
 import "./style.css";
 
@@ -12,6 +9,27 @@ interface PortalProps {
 }
 
 const defaultHeadline = "Start a return or exchange";
+const apiOrigin = new URL(import.meta.url).origin;
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await httpClient.fetchWithAuth(`${apiOrigin}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json() as unknown;
+  if (!response.ok) {
+    const message =
+      typeof payload === "object" &&
+      payload !== null &&
+      "error" in payload &&
+      typeof payload.error === "string"
+        ? payload.error
+        : "ReturnFlow request failed.";
+    throw new Error(message);
+  }
+  return payload as T;
+}
 
 export const ReturnFlowPortal: FC<PortalProps> = ({
   headline = defaultHeadline,
@@ -40,7 +58,10 @@ export const ReturnFlowPortal: FC<PortalProps> = ({
     setError(undefined);
     setSubmittedReturn(undefined);
     try {
-      const result = await lookupPortalOrder(normalizedOrderNumber, normalizedEmail);
+      const result = await postJson<PortalLookupResult>("/api/returnflow/lookup", {
+        orderNumber: normalizedOrderNumber,
+        email: normalizedEmail,
+      });
       setLookup(result);
       setSelectedLineItemIds(
         result.eligibility.items
@@ -63,7 +84,7 @@ export const ReturnFlowPortal: FC<PortalProps> = ({
     setLoading(true);
     setError(undefined);
     try {
-      const request = await submitPortalReturnRequest({
+      const request = await postJson<ReturnRequest>("/api/returnflow/submit", {
         token: lookup.token,
         selectedLineItemIds,
         resolutionPreference,

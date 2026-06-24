@@ -1,0 +1,14 @@
+{
+  "namespace": "@sharmarever/rto-flow-pro",
+  "codeIdentifier": "rto_flow_pro",
+  "projectType": "App",
+  "permissions": [
+    "SCOPE.DC-DATA.READ",
+    "SCOPE.DC-DATA.WRITE",
+    "SCOPE.STORES.CATALOG_READ_LIMITED",
+    "SCOPE.DC-STORES.READ-PRODUCTS",
+    "SCOPE.DC-STORES.READ-ORDERS",
+    "SCOPE.STORES.PRODUCT_READ",
+    "SCOPE.STORES.PRODUCT_READ_ADMIN"
+  ]
+}

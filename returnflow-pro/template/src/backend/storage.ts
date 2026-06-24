@@ -8,7 +8,7 @@ import type {
   ReturnRequest,
   StoreCreditRecord,
 } from "../types";
-import { collectionIds } from "./collections";
+import { collectionIdCandidates } from "./collections";
 
 const SETTINGS_RECORD_ID = "returnflow-settings";
 const STORAGE_RETRY_DELAYS_MS = [250, 1_000, 2_500];
@@ -41,6 +41,8 @@ const getLookupTokenItem = auth.elevate(items.get);
 const insertLookupTokenItem = auth.elevate(items.insert);
 const removeLookupTokenItem = auth.elevate(items.remove);
 const queryLookupTokenItems = auth.elevate(items.query);
+type CollectionKey = keyof typeof collectionIdCandidates;
+const resolvedCollectionIds = new Map<CollectionKey, string>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -123,18 +125,63 @@ async function withStorageRetry<T>(operation: () => Promise<T>): Promise<T> {
   throw lastError instanceof Error ? lastError : new Error("ReturnFlow storage operation failed.");
 }
 
+function isMissingCollectionError(error: unknown): boolean {
+  return error instanceof Error && (
+    error.message.includes("WDE0025") ||
+    error.message.includes("collection does not exist")
+  );
+}
+
+async function withCollectionFallback<T>(
+  collectionKey: CollectionKey,
+  operation: (collectionId: string) => Promise<T>
+): Promise<T> {
+  const cachedCollectionId = resolvedCollectionIds.get(collectionKey);
+  if (cachedCollectionId) {
+    try {
+      return await withStorageRetry(() => operation(cachedCollectionId));
+    } catch (error) {
+      if (!isMissingCollectionError(error)) {
+        throw error;
+      }
+      resolvedCollectionIds.delete(collectionKey);
+    }
+  }
+
+  let missingCollectionError: unknown;
+  for (const collectionId of collectionIdCandidates[collectionKey]) {
+    try {
+      const result = await operation(collectionId);
+      resolvedCollectionIds.set(collectionKey, collectionId);
+      return result;
+    } catch (error) {
+      if (!isMissingCollectionError(error)) {
+        const result = await withStorageRetry(() => operation(collectionId));
+        resolvedCollectionIds.set(collectionKey, collectionId);
+        return result;
+      }
+      missingCollectionError = error;
+    }
+  }
+
+  throw missingCollectionError instanceof Error
+    ? missingCollectionError
+    : new Error(`ReturnFlow collection "${collectionKey}" does not exist.`);
+}
+
 export async function loadReturnFlowState(seedState: ReturnFlowState): Promise<ReturnFlowState> {
-  const settingsRecord = await withStorageRetry(
-    () => getItem(collectionIds.settings, SETTINGS_RECORD_ID) as Promise<PayloadRecord | null>
+  const settingsRecord = await withCollectionFallback(
+    "settings",
+    (collectionId) => getItem(collectionId, SETTINGS_RECORD_ID) as Promise<PayloadRecord | null>
   );
   const settingsPayload = stateRecordPayload(settingsRecord);
   const state: ReturnFlowState = {
     settings: isSettings(settingsPayload) ? settingsPayload : seedState.settings,
-    orders: await loadPayloads(collectionIds.orders, isOrder),
-    returns: await loadPayloads(collectionIds.returns, isReturn),
-    refunds: await loadPayloads(collectionIds.refunds, isRefund),
-    exchanges: await loadPayloads(collectionIds.exchanges, isExchange),
-    storeCredits: await loadPayloads(collectionIds.storeCredits, isStoreCredit),
+    orders: await loadPayloads("orders", isOrder),
+    returns: await loadPayloads("returns", isReturn),
+    refunds: await loadPayloads("refunds", isRefund),
+    exchanges: await loadPayloads("exchanges", isExchange),
+    storeCredits: await loadPayloads("storeCredits", isStoreCredit),
   };
 
   if (!isSettings(settingsPayload)) {
@@ -146,25 +193,27 @@ export async function loadReturnFlowState(seedState: ReturnFlowState): Promise<R
 
 export async function saveReturnFlowState(state: ReturnFlowState): Promise<void> {
   await Promise.all([
-    withStorageRetry(() => saveItem(collectionIds.settings, {
+    withCollectionFallback("settings", (collectionId) => saveItem(collectionId, {
       _id: SETTINGS_RECORD_ID,
       title: "ReturnFlow Settings",
       payload: state.settings,
       updatedAt: new Date(),
     })),
-    savePayloads(collectionIds.orders, state.orders),
-    savePayloads(collectionIds.returns, state.returns),
-    savePayloads(collectionIds.refunds, state.refunds),
-    savePayloads(collectionIds.exchanges, state.exchanges),
-    savePayloads(collectionIds.storeCredits, state.storeCredits),
+    savePayloads("orders", state.orders),
+    savePayloads("returns", state.returns),
+    savePayloads("refunds", state.refunds),
+    savePayloads("exchanges", state.exchanges),
+    savePayloads("storeCredits", state.storeCredits),
   ]);
 }
 
 async function loadPayloads<T extends { id: string }>(
-  collectionId: string,
+  collectionKey: CollectionKey,
   guard: (value: unknown) => value is T
 ): Promise<T[]> {
-  let page = await withStorageRetry(() => queryItems(collectionId).limit(1000).find());
+  let page = await withCollectionFallback(collectionKey, (collectionId) =>
+    queryItems(collectionId).limit(1000).find()
+  );
   const values: T[] = [];
 
   while (true) {
@@ -182,10 +231,13 @@ async function loadPayloads<T extends { id: string }>(
   }
 }
 
-async function savePayloads<T extends { id: string }>(collectionId: string, records: T[]): Promise<void> {
+async function savePayloads<T extends { id: string }>(
+  collectionKey: CollectionKey,
+  records: T[]
+): Promise<void> {
   await Promise.all(
     records.map((record) =>
-      withStorageRetry(() => saveItem(collectionId, {
+      withCollectionFallback(collectionKey, (collectionId) => saveItem(collectionId, {
         _id: record.id,
         title: record.id,
         payload: record,
@@ -196,7 +248,7 @@ async function savePayloads<T extends { id: string }>(collectionId: string, reco
 }
 
 export async function storeLookupToken(token: string, orderId: string, expiresAt: number): Promise<void> {
-  await withStorageRetry(() => insertLookupTokenItem(collectionIds.lookupTokens, {
+  await withCollectionFallback("lookupTokens", (collectionId) => insertLookupTokenItem(collectionId, {
     _id: token,
     orderId,
     expiresAt: new Date(expiresAt),
@@ -204,8 +256,9 @@ export async function storeLookupToken(token: string, orderId: string, expiresAt
 }
 
 export async function consumeLookupToken(token: string): Promise<string> {
-  const record = await withStorageRetry(
-    () => getLookupTokenItem(collectionIds.lookupTokens, token) as Promise<LookupTokenRecord | null>
+  const record = await withCollectionFallback(
+    "lookupTokens",
+    (collectionId) => getLookupTokenItem(collectionId, token) as Promise<LookupTokenRecord | null>
   );
   if (!record || typeof record.orderId !== "string") {
     throw new Error("Lookup token is invalid or expired.");
@@ -218,17 +271,17 @@ export async function consumeLookupToken(token: string): Promise<string> {
       : Number.NaN;
 
   if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
-    await withStorageRetry(() => removeLookupTokenItem(collectionIds.lookupTokens, token));
+    await withCollectionFallback("lookupTokens", (collectionId) => removeLookupTokenItem(collectionId, token));
     throw new Error("Lookup token is invalid or expired.");
   }
 
-  await withStorageRetry(() => removeLookupTokenItem(collectionIds.lookupTokens, token));
+  await withCollectionFallback("lookupTokens", (collectionId) => removeLookupTokenItem(collectionId, token));
   return record.orderId;
 }
 
 export async function pruneExpiredLookupTokens(): Promise<void> {
-  const result = await withStorageRetry(() =>
-    queryLookupTokenItems(collectionIds.lookupTokens)
+  const result = await withCollectionFallback("lookupTokens", (collectionId) =>
+    queryLookupTokenItems(collectionId)
       .lt("expiresAt", new Date())
       .limit(100)
       .find()
@@ -239,6 +292,8 @@ export async function pruneExpiredLookupTokens(): Promise<void> {
     .filter((id): id is string => typeof id === "string");
 
   await Promise.all(
-    expiredIds.map((id) => withStorageRetry(() => removeLookupTokenItem(collectionIds.lookupTokens, id)))
+    expiredIds.map((id) =>
+      withCollectionFallback("lookupTokens", (collectionId) => removeLookupTokenItem(collectionId, id))
+    )
   );
 }

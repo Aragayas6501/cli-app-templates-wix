@@ -1,5 +1,5 @@
 {
   "$schema": "https://dev.wix.com/wix-cli/schemas/wix-config.json",
-  "appId": "<%= devCenter.appId %>",
-  "projectId": "<%= packageName %>"
+  "appId": "<%= devCenter.appId || '40d0fd95-b787-48d3-b512-5ae959d85773' %>",
+  "projectId": "<%= devCenter.projectId || 'rto-flow-pro' %>"
 }

@@ -1,4 +1,3 @@
-import { Permissions, webMethod } from "@wix/web-methods";
 import type {
   PortalLookupResult,
   PortalSubmissionInput,
@@ -61,94 +60,92 @@ function validateReturnId(id: string): string {
   return id;
 }
 
-export const getReturnFlowData = webMethod(
-  Permissions.Admin,
-  async (): Promise<ReturnFlowDashboardData & { catalogVersion: string }> => {
-    const catalogVersion = await getCatalogVersion();
-    return {
-      ...(await getDashboardData()),
-      catalogVersion,
-    };
+export async function getReturnFlowData(): Promise<ReturnFlowDashboardData & { catalogVersion: string }> {
+  const catalogVersion = await getCatalogVersion();
+  return {
+    ...(await getDashboardData()),
+    catalogVersion,
+  };
+}
+
+export async function saveReturnFlowSettings(
+  settings: ReturnFlowSettings
+): Promise<ReturnFlowSettings> {
+  return updateSettings(settings);
+}
+
+export async function transitionReturn(
+  id: string,
+  status: ReturnStatus,
+  message: string
+): Promise<ReturnRequest> {
+  return updateReturnStatus(validateReturnId(id), status, typeof message === "string" ? message.trim() : "");
+}
+
+export async function approveReturnRequest(id: string): Promise<ReturnRequest> {
+  return approveReturn(validateReturnId(id));
+}
+
+export async function rejectReturnRequest(id: string): Promise<ReturnRequest> {
+  return rejectReturn(validateReturnId(id));
+}
+
+export async function createReturnRefundIntent(id: string) {
+  return createRefundIntent(validateReturnId(id));
+}
+
+export async function issueReturnStoreCredit(id: string) {
+  return issueStoreCredit(validateReturnId(id));
+}
+
+export async function lookupPortalOrderForRequest(
+  orderNumber: string,
+  email: string
+): Promise<PortalLookupResult> {
+  const data = await getDashboardData();
+  if (!data.settings.portalEnabled) {
+    throw new Error("The return portal is currently unavailable.");
   }
-);
 
-export const saveReturnFlowSettings = webMethod(
-  Permissions.Admin,
-  async (settings: ReturnFlowSettings): Promise<ReturnFlowSettings> => updateSettings(settings)
-);
-
-export const transitionReturn = webMethod(
-  Permissions.Admin,
-  async (id: string, status: ReturnStatus, message: string): Promise<ReturnRequest> =>
-    updateReturnStatus(validateReturnId(id), status, typeof message === "string" ? message.trim() : "")
-);
-
-export const approveReturnRequest = webMethod(
-  Permissions.Admin,
-  async (id: string): Promise<ReturnRequest> => approveReturn(validateReturnId(id))
-);
-
-export const rejectReturnRequest = webMethod(
-  Permissions.Admin,
-  async (id: string): Promise<ReturnRequest> => rejectReturn(validateReturnId(id))
-);
-
-export const createReturnRefundIntent = webMethod(
-  Permissions.Admin,
-  async (id: string) => createRefundIntent(validateReturnId(id))
-);
-
-export const issueReturnStoreCredit = webMethod(
-  Permissions.Admin,
-  async (id: string) => issueStoreCredit(validateReturnId(id))
-);
-
-export const lookupPortalOrder = webMethod(
-  Permissions.Anyone,
-  async (orderNumber: string, email: string): Promise<PortalLookupResult> => {
-    const data = await getDashboardData();
-    if (!data.settings.portalEnabled) {
-      throw new Error("The return portal is currently unavailable.");
-    }
-
-    const lookup = normalizeLookup(orderNumber, email);
-    const order = await findOrder(lookup.orderNumber, lookup.email);
-    if (!order) {
-      throw new Error("We could not verify an order with those details.");
-    }
-
-    const eligibility = evaluateEligibility(order);
-    return {
-      token: await createLookupToken(order.id),
-      order: toPortalOrderSummary(order),
-      eligibility,
-      reasons: data.reasons.filter((reason) => reason.isActive),
-    };
+  const lookup = normalizeLookup(orderNumber, email);
+  const order = await findOrder(lookup.orderNumber, lookup.email);
+  if (!order) {
+    throw new Error("We could not verify an order with those details.");
   }
-);
 
-export const submitPortalReturnRequest = webMethod(
-  Permissions.Anyone,
-  async (input: PortalSubmissionInput): Promise<ReturnRequest> => {
-    if (!(await getDashboardData()).settings.portalEnabled) {
-      throw new Error("The return portal is currently unavailable.");
-    }
-    if (!input || typeof input.token !== "string") {
-      throw new Error("Verify your order before submitting a return.");
-    }
-    const orderId = await consumeLookupToken(input.token);
-    const verifiedOrder = await findOrderById(orderId);
+  const eligibility = evaluateEligibility(order);
+  return {
+    token: await createLookupToken(order.id),
+    order: toPortalOrderSummary(order),
+    eligibility,
+    reasons: data.reasons.filter((reason) => reason.isActive),
+  };
+}
 
-    if (!verifiedOrder) {
-      throw new Error("The verified order could not be loaded.");
-    }
-
-    return await submitPortalReturn(
-      verifiedOrder,
-      input.selectedLineItemIds,
-      input.reasonCode,
-      input.resolutionPreference,
-      input.comment
-    );
+export async function submitPortalReturnForRequest(
+  input: PortalSubmissionInput
+): Promise<ReturnRequest> {
+  if (!(await getDashboardData()).settings.portalEnabled) {
+    throw new Error("The return portal is currently unavailable.");
   }
-);
+  if (!input || typeof input.token !== "string") {
+    throw new Error("Verify your order before submitting a return.");
+  }
+  const orderId = await consumeLookupToken(input.token);
+  const verifiedOrder = await findOrderById(orderId);
+
+  if (!verifiedOrder) {
+    throw new Error("The verified order could not be loaded.");
+  }
+
+  return await submitPortalReturn(
+    verifiedOrder,
+    input.selectedLineItemIds,
+    input.reasonCode,
+    input.resolutionPreference,
+    input.comment
+  );
+}
+
+export const lookupPortalOrder = lookupPortalOrderForRequest;
+export const submitPortalReturnRequest = submitPortalReturnForRequest;
