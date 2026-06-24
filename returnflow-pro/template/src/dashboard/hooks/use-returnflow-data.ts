@@ -58,6 +58,10 @@ export function useReturnFlowData() {
       mutationFn: (id: string) => postJson("/api/returnflow/action", { id, action: "refund" }),
       onSuccess: invalidate,
     }),
+    exchange: useMutation({
+      mutationFn: (id: string) => postJson("/api/returnflow/action", { id, action: "exchange" }),
+      onSuccess: invalidate,
+    }),
     credit: useMutation({
       mutationFn: (id: string) => postJson("/api/returnflow/action", { id, action: "credit" }),
       onSuccess: invalidate,

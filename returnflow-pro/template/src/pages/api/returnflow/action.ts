@@ -1,13 +1,14 @@
 import type { APIRoute } from "astro";
 import {
   approveReturnRequest,
+  createReturnExchangeIntent,
   createReturnRefundIntent,
   issueReturnStoreCredit,
   rejectReturnRequest,
 } from "../../../backend/returnflow-data.web";
 
 const jsonHeaders = { "Content-Type": "application/json" };
-const actions = new Set(["approve", "reject", "refund", "credit"]);
+const actions = new Set(["approve", "reject", "refund", "credit", "exchange"]);
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -35,7 +36,9 @@ export const POST: APIRoute = async ({ request }) => {
           ? await rejectReturnRequest(body.id)
           : body.action === "refund"
             ? await createReturnRefundIntent(body.id)
-            : await issueReturnStoreCredit(body.id);
+            : body.action === "credit"
+              ? await issueReturnStoreCredit(body.id)
+              : await createReturnExchangeIntent(body.id);
 
     return new Response(JSON.stringify(result), {
       status: 200,

@@ -45,6 +45,7 @@ export const ReturnFlowPortal: FC<PortalProps> = ({
   const [submittedReturn, setSubmittedReturn] = useState<ReturnRequest | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
+  const activeReason = lookup?.reasons.find((reason) => reason.code === reasonCode);
 
   const verifyOrder = async () => {
     const normalizedOrderNumber = orderNumber.trim();
@@ -63,6 +64,7 @@ export const ReturnFlowPortal: FC<PortalProps> = ({
         email: normalizedEmail,
       });
       setLookup(result);
+      setReasonCode(result.reasons[0]?.code ?? "too-small");
       setSelectedLineItemIds(
         result.eligibility.items
           .filter((item) => item.eligible)
@@ -206,7 +208,7 @@ export const ReturnFlowPortal: FC<PortalProps> = ({
             </label>
           </div>
           <label>
-            Comments
+            Comments {activeReason?.requiresPhoto ? "(required for damage or wrong-item details)" : "(optional)"}
             <textarea value={comment} onChange={(event) => setComment(event.target.value)} />
           </label>
           <button type="button" onClick={submit} disabled={loading || selectedLineItemIds.length === 0}>

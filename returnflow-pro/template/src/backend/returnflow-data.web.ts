@@ -8,6 +8,7 @@ import type {
 } from "../types";
 import {
   approveReturn,
+  createExchangeIntent,
   createRefundIntent,
   evaluateEligibility,
   findOrder,
@@ -92,6 +93,10 @@ export async function rejectReturnRequest(id: string): Promise<ReturnRequest> {
 
 export async function createReturnRefundIntent(id: string) {
   return createRefundIntent(validateReturnId(id));
+}
+
+export async function createReturnExchangeIntent(id: string) {
+  return createExchangeIntent(validateReturnId(id));
 }
 
 export async function issueReturnStoreCredit(id: string) {

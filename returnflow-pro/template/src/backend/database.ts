@@ -128,11 +128,11 @@ let storeCredits: StoreCreditRecord[] = [];
 
 const automations: AutomationRule[] = [
   {
-    id: "auto-damaged-photo",
-    name: "Require evidence for damaged returns",
+    id: "auto-damaged-evidence",
+    name: "Require details for damaged returns",
     trigger: "reason_selected",
     conditionSummary: "If reason is Damaged item or Wrong item received",
-    actionSummary: "Require photo upload before submission",
+    actionSummary: "Require customer-provided damage details and elevate review priority",
     isActive: true,
     lastRunAt: isoDaysAgo(1, 15),
   },
@@ -146,12 +146,12 @@ const automations: AutomationRule[] = [
     lastRunAt: isoDaysAgo(2, 10),
   },
   {
-    id: "auto-vip-approve",
-    name: "Auto approve VIP customers",
+    id: "auto-low-risk-approve",
+    name: "Auto approve low-risk requests",
     trigger: "risk_scored",
-    conditionSummary: "If customer group is VIP and risk is low",
-    actionSummary: "Approve and create RMA",
-    isActive: false,
+    conditionSummary: "If the setting is enabled and return risk is low",
+    actionSummary: "Approve the request and approved quantities automatically",
+    isActive: true,
   },
 ];
 
@@ -219,6 +219,25 @@ function productInsights(): ProductInsight[] {
     .slice(0, 5);
 }
 
+function effectivePolicies(): ReturnPolicy[] {
+  return policies.map((policy) =>
+    policy.isDefault
+      ? {
+          ...policy,
+          returnWindowDays: settings.defaultReturnWindowDays,
+        }
+      : policy
+  );
+}
+
+function defaultPolicy(): ReturnPolicy {
+  const policy = effectivePolicies().find((candidate) => candidate.isDefault && candidate.isActive);
+  if (!policy) {
+    throw new Error("No active default return policy is configured.");
+  }
+  return policy;
+}
+
 function currentState(): ReturnFlowState {
   return {
     settings,
@@ -264,7 +283,7 @@ export async function getDashboardData(): Promise<ReturnFlowDashboardData> {
   await hydrateState();
   return {
     settings,
-    policies,
+    policies: effectivePolicies(),
     reasons,
     returns,
     refunds,
@@ -316,10 +335,7 @@ export function toPortalOrderSummary(order: CustomerOrder): PortalOrderSummary {
 }
 
 export function evaluateEligibility(order: CustomerOrder): EligibilityResult {
-  const policy = policies.find((candidate) => candidate.isDefault && candidate.isActive);
-  if (!policy) {
-    throw new Error("No active default return policy is configured.");
-  }
+  const policy = defaultPolicy();
   const fulfilledAt = new Date(order.fulfilledAt);
   const ageMs = Date.now() - fulfilledAt.getTime();
   const ageDays = Math.floor(ageMs / MS_PER_DAY);
@@ -476,6 +492,34 @@ export async function createRefundIntent(id: string): Promise<RefundRecord> {
   return refund;
 }
 
+export async function createExchangeIntent(id: string): Promise<ExchangeRecord[]> {
+  await hydrateState();
+  const request = returns.find((candidate) => candidate.id === id);
+  if (!request) {
+    throw new Error(`Return ${id} was not found.`);
+  }
+  if (request.resolutionPreference !== "exchange") {
+    throw new Error("Exchange intent can only be created for exchange return requests.");
+  }
+  assertTransition(request.status, "exchange_pending");
+  if (exchanges.some((exchange) => exchange.returnRequestId === id && exchange.status !== "completed")) {
+    throw new Error("An exchange intent already exists for this return.");
+  }
+
+  const updatedRequest = updateReturnStatusInState(id, "exchange_pending", "Exchange intent created for merchant fulfillment.");
+  const exchangeRecords = updatedRequest.items.map((item) => ({
+    id: secureId("exchange"),
+    returnRequestId: id,
+    status: "requested" as const,
+    originalSku: item.sku,
+    priceDeltaAmount: 0,
+  }));
+
+  exchanges = [...exchangeRecords, ...exchanges];
+  await persistState();
+  return exchangeRecords;
+}
+
 export async function issueStoreCredit(id: string): Promise<StoreCreditRecord> {
   await hydrateState();
   const request = returns.find((candidate) => candidate.id === id);
@@ -582,7 +626,13 @@ export async function submitPortalReturn(
   const subtotalAmount = selectedItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   const submittedAt = now();
   const safeComment = normalizeComment(comment);
+  if (reason.requiresPhoto && safeComment.length < 10) {
+    throw new Error("Add a short description of the damage or incorrect item before submitting.");
+  }
   const requestId = secureId("ret");
+  const riskScore = reason.code === "damaged" || reason.code === "wrong-item" ? 32 : 18;
+  const riskLevel = riskScore >= 30 ? "medium" : "low";
+  const autoApproved = settings.autoApproveLowRisk && riskLevel === "low" && defaultPolicy().approvalMode !== "manual";
   const returnRequest: ReturnRequest = {
     id: requestId,
     rmaNumber: rmaNumber(order.orderNumber, requestId),
@@ -590,14 +640,14 @@ export async function submitPortalReturn(
     orderNumber: order.orderNumber,
     customerEmail: order.customerEmail,
     customerName: order.customerName,
-    status: "pending_approval",
+    status: autoApproved ? "approved" : "pending_approval",
     resolutionPreference,
     policyId: eligibility.policyId,
     requestedAt: submittedAt,
     updatedAt: submittedAt,
-    riskScore: reason.code === "damaged" ? 32 : 18,
-    riskLevel: reason.code === "damaged" ? "medium" : "low",
-    priority: reason.code === "damaged" ? "elevated" : "normal",
+    riskScore,
+    riskLevel,
+    priority: riskLevel === "medium" ? "elevated" : "normal",
     currency: order.currency,
     subtotalAmount,
     refundEstimateAmount: subtotalAmount,
@@ -613,7 +663,7 @@ export async function submitPortalReturn(
       variantDescription: item.variantDescription,
       quantityOrdered: item.quantity,
       quantityRequested: item.quantity,
-      quantityApproved: 0,
+      quantityApproved: autoApproved ? item.quantity : 0,
       reasonCode: reason.code,
       customerComment: safeComment,
       requiresPhoto: reason.requiresPhoto,
@@ -624,6 +674,9 @@ export async function submitPortalReturn(
     timeline: [
       timeline("return.requested", "Customer submitted the return request.", submittedAt),
       timeline("eligibility.evaluated", `${eligibility.policyName} matched this request.`, submittedAt),
+      ...(autoApproved
+        ? [timeline("approval.auto_approved", "Low-risk request auto-approved by ReturnFlow settings.", submittedAt)]
+        : []),
     ],
   };
 

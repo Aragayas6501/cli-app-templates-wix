@@ -9,6 +9,7 @@ interface ReturnInspectorProps {
   onApprove: (request: ReturnRequest) => void;
   onReject: (request: ReturnRequest) => void;
   onRefund: (request: ReturnRequest) => void;
+  onExchange: (request: ReturnRequest) => void;
   onCredit: (request: ReturnRequest) => void;
 }
 
@@ -21,6 +22,7 @@ export function ReturnInspector({
   onApprove,
   onReject,
   onRefund,
+  onExchange,
   onCredit,
 }: ReturnInspectorProps) {
   if (!request) {
@@ -42,6 +44,9 @@ export function ReturnInspector({
 
   const canReview = request.status === "pending_approval";
   const canCreateFinancialIntent = financialActionStatuses.includes(request.status);
+  const canCreateRefundIntent = canCreateFinancialIntent && request.resolutionPreference === "refund";
+  const canCreateExchangeIntent = canCreateFinancialIntent && request.resolutionPreference === "exchange";
+  const canCreateCreditIntent = canCreateFinancialIntent && request.resolutionPreference === "storeCredit";
 
   return (
     <Card className="rf-card rf-inspector">
@@ -67,6 +72,11 @@ export function ReturnInspector({
                 <Text size="tiny" secondary>
                   {item.sku} • {item.reasonCode} • Qty {item.quantityRequested}
                 </Text>
+                {item.customerComment && (
+                  <Text size="tiny" secondary>
+                    Customer details: {item.customerComment}
+                  </Text>
+                )}
               </Box>
             ))}
           </Box>
@@ -98,10 +108,13 @@ export function ReturnInspector({
               {rejecting ? "Rejecting..." : "Reject request"}
             </Button>
             <Box gap="SP2">
-              <TextButton disabled={!canCreateFinancialIntent} onClick={() => onRefund(request)}>
+              <TextButton disabled={!canCreateRefundIntent} onClick={() => onRefund(request)}>
                 Create refund intent
               </TextButton>
-              <TextButton disabled={!canCreateFinancialIntent} onClick={() => onCredit(request)}>
+              <TextButton disabled={!canCreateExchangeIntent} onClick={() => onExchange(request)}>
+                Create exchange intent
+              </TextButton>
+              <TextButton disabled={!canCreateCreditIntent} onClick={() => onCredit(request)}>
                 Issue store credit
               </TextButton>
             </Box>

@@ -48,7 +48,7 @@ function filterReturnsForTab(returns: ReturnRequest[], tab: DashboardTab): Retur
 }
 
 function ReturnFlowProPage() {
-  const { data, approve, reject, refund, credit, saveSettings } = useReturnFlowData();
+  const { data, approve, reject, refund, exchange, credit, saveSettings } = useReturnFlowData();
   const [selectedTab, setSelectedTab] = useState<DashboardTab>("overview");
   const [selectedReturnId, setSelectedReturnId] = useState<string | undefined>();
   const [query, setQuery] = useState("");
@@ -247,6 +247,15 @@ function ReturnFlowProPage() {
                         "A refund intent will be created for merchant action in the native Wix order refund flow.",
                         () => refund.mutateAsync(request.id),
                         "Refund intent created."
+                      )
+                    }
+                    onExchange={(request) =>
+                      handleConfirmedMutation(
+                        request,
+                        "Create exchange intent",
+                        "An exchange intent will be created for merchant fulfillment and the return timeline will be updated.",
+                        () => exchange.mutateAsync(request.id),
+                        "Exchange intent created."
                       )
                     }
                     onCredit={(request) =>

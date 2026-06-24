@@ -8,18 +8,12 @@ interface OperationsPanelsProps {
   onSettingsChange: (settings: ReturnFlowSettings) => void;
 }
 
-function carrierList(value: string): string[] {
-  return value
-    .split(",")
-    .map((carrier) => carrier.trim())
-    .filter(Boolean);
-}
-
 export function OperationsPanels({ activeTab, data, onSettingsChange }: OperationsPanelsProps) {
   const [draftSettings, setDraftSettings] = useState(data.settings);
   const showPolicies = activeTab === "overview" || activeTab === "policies";
   const showAnalytics = activeTab === "overview" || activeTab === "analytics";
   const showAutomations = activeTab === "overview" || activeTab === "fraud" || activeTab === "automations";
+  const showExchanges = activeTab === "overview" || activeTab === "exchanges";
   const showSettings = activeTab === "overview" || activeTab === "settings";
 
   useEffect(() => {
@@ -66,6 +60,32 @@ export function OperationsPanels({ activeTab, data, onSettingsChange }: Operatio
                       {insight.returnRate}% return rate • Top reason: {insight.topReason}
                     </Text>
                     <Text size="small">{insight.recommendation}</Text>
+                  </Box>
+                ))
+              )}
+            </Box>
+          </Card.Content>
+        </Card>
+      )}
+      {showExchanges && (
+        <Card className="rf-card">
+          <Card.Header title="Exchange fulfillment queue" subtitle="Exchange intents created from approved return requests" />
+          <Card.Content>
+            <Box direction="vertical" gap="SP2">
+              {data.exchanges.length === 0 ? (
+                <Box className="rf-soft-panel" padding="SP3" direction="vertical" gap="SP1">
+                  <Text weight="bold">No exchange intents yet</Text>
+                  <Text secondary>
+                    Approved exchange returns can be moved into this queue from the return inspector.
+                  </Text>
+                </Box>
+              ) : (
+                data.exchanges.map((exchange) => (
+                  <Box key={exchange.id} direction="vertical">
+                    <Text weight="bold">{exchange.originalSku}</Text>
+                    <Text size="small" secondary>
+                      {exchange.status} • {exchange.replacementSku ?? "Replacement SKU pending merchant selection"}
+                    </Text>
                   </Box>
                 ))
               )}
@@ -161,17 +181,6 @@ export function OperationsPanels({ activeTab, data, onSettingsChange }: Operatio
                       setDraftSettings((current) => ({
                         ...current,
                         primaryLocale: event.currentTarget.value,
-                      }))
-                    }
-                  />
-                </FormField>
-                <FormField label="Enabled carriers">
-                  <Input
-                    value={draftSettings.enabledCarriers.join(", ")}
-                    onChange={(event) =>
-                      setDraftSettings((current) => ({
-                        ...current,
-                        enabledCarriers: carrierList(event.currentTarget.value),
                       }))
                     }
                   />

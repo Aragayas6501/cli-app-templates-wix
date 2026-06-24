@@ -90,7 +90,8 @@ function isRefund(value: unknown): value is RefundRecord {
 }
 
 function isExchange(value: unknown): value is ExchangeRecord {
-  return hasStringFields(value, ["id", "returnRequestId", "status", "originalSku", "replacementSku"]) &&
+  return hasStringFields(value, ["id", "returnRequestId", "status", "originalSku"]) &&
+    (typeof value.replacementSku === "string" || value.replacementSku === undefined) &&
     typeof value.priceDeltaAmount === "number";
 }
 

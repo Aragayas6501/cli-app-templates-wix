@@ -166,7 +166,7 @@ export interface ExchangeRecord {
   returnRequestId: string;
   status: "requested" | "reserved" | "awaiting_return" | "shipped" | "completed";
   originalSku: string;
-  replacementSku: string;
+  replacementSku?: string;
   priceDeltaAmount: number;
   trackingNumber?: string;
 }

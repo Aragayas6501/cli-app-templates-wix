@@ -43,7 +43,18 @@ function parseSettings(body: unknown): ReturnFlowSettings | undefined {
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const settings = parseSettings(await request.json() as unknown);
+    let body: unknown;
+    try {
+      body = await request.json() as unknown;
+    } catch {
+      return new Response(JSON.stringify({ error: "ReturnFlow settings payload is invalid." }), {
+        status: 400,
+        statusText: "Bad Request",
+        headers: jsonHeaders,
+      });
+    }
+
+    const settings = parseSettings(body);
     if (!settings) {
       return new Response(JSON.stringify({ error: "ReturnFlow settings payload is invalid." }), {
         status: 400,

@@ -70,7 +70,11 @@ function variantId(lineItem: EcomLineItem): string | undefined {
 
 function lineItemPrice(lineItem: EcomLineItem): number {
   const rawAmount = lineItem.price?.amount ?? lineItem.lineItemPrice?.amount ?? lineItem.totalPriceAfterTax?.amount;
-  const amount = typeof rawAmount === "string" ? Number(rawAmount) : Number.NaN;
+  const amount = typeof rawAmount === "number"
+    ? rawAmount
+    : typeof rawAmount === "string"
+      ? Number(rawAmount)
+      : Number.NaN;
   return Number.isFinite(amount) ? amount : 0;
 }
 
