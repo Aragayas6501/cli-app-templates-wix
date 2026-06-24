@@ -1,1 +1,2 @@
-.wix/
+.wix/*
+!.wix/app.config.json

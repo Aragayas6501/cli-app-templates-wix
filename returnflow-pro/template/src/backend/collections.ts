@@ -1,6 +1,7 @@
-import { projectId } from "../../wix.config.json";
+import wixConfig from "../../wix.config.json";
+import appConfig from "../../app-config.json";
 
-const appNamespace = projectId;
+const appNamespace = appConfig.namespace?.trim() || wixConfig.projectId?.trim() || "returnflow-pro";
 
 export const collectionSuffixes = {
   settings: "returnflow-settings",

@@ -1,0 +1,11 @@
+{
+  "namespace": "@sharmarever/rto-flow-pro",
+  "codeIdentifier": "rto_flow_pro",
+  "projectType": "App",
+  "permissions": [
+    "WIX_DATA",
+    "SCOPE.STORES.CATALOG_READ_LIMITED",
+    "SCOPE.STORES.PRODUCT_READ_ADMIN",
+    "SCOPE.STORES.ORDERS_READ"
+  ]
+}
